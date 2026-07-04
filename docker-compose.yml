@@ -1,0 +1,83 @@
+services:
+    app:
+        build: docker/php
+        # На Windows-маунтах storage принадлежит root — чиним права перед стартом fpm
+        command: sh -c "chmod -R 777 storage bootstrap/cache && exec php-fpm"
+        volumes:
+            - .:/var/www/html
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_started
+        restart: unless-stopped
+
+    queue:
+        build: docker/php
+        command: php artisan queue:work redis --tries=3 --sleep=1
+        volumes:
+            - .:/var/www/html
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_started
+        restart: unless-stopped
+
+    nginx:
+        image: nginx:1.27-alpine
+        ports:
+            - "8080:80"
+        volumes:
+            - .:/var/www/html
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+        depends_on:
+            - app
+            - centrifugo
+        restart: unless-stopped
+
+    postgres:
+        image: postgres:16-alpine
+        environment:
+            POSTGRES_DB: kanban
+            POSTGRES_USER: kanban
+            POSTGRES_PASSWORD: secret
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+        ports:
+            - "55432:5432"
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U kanban -d kanban"]
+            interval: 5s
+            timeout: 3s
+            retries: 10
+        restart: unless-stopped
+
+    redis:
+        image: redis:7-alpine
+        restart: unless-stopped
+
+    centrifugo:
+        image: centrifugo/centrifugo:v5
+        command: centrifugo -c /centrifugo/config.json
+        volumes:
+            - ./docker/centrifugo/config.json:/centrifugo/config.json:ro
+        restart: unless-stopped
+
+    # Одноразовый контейнер сборки фронтенда: собирает assets и завершается
+    node:
+        image: node:20-alpine
+        working_dir: /var/www/html
+        volumes:
+            - .:/var/www/html
+        command: sh -c "npm install && npm run build"
+        restart: "no"
+
+    mailpit:
+        image: axllent/mailpit
+        ports:
+            - "8025:8025"
+        restart: unless-stopped
+
+volumes:
+    pgdata:
