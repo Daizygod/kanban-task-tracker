@@ -28,6 +28,28 @@ function getCentrifuge() {
 
 document.addEventListener('livewire:init', () => {
     // -----------------------------------------------------------------------
+    // Тонкий индикатор загрузки сверху: виден, пока идут Livewire-запросы
+    // -----------------------------------------------------------------------
+    const progressBar = document.createElement('div');
+    progressBar.className = 'lw-progress';
+    document.body.appendChild(progressBar);
+
+    let activeRequests = 0;
+
+    window.Livewire.hook('request', ({ respond }) => {
+        activeRequests++;
+        progressBar.classList.add('active');
+
+        respond(() => {
+            activeRequests = Math.max(0, activeRequests - 1);
+
+            if (activeRequests === 0) {
+                progressBar.classList.remove('active');
+            }
+        });
+    });
+
+    // -----------------------------------------------------------------------
     // Колонка канбан-доски: drag&drop карточек между колонками своей строки.
     // После дропа карточка возвращается на место, а сервер перерисовывает
     // доску — единственный источник правды о статусе.
@@ -37,7 +59,9 @@ document.addEventListener('livewire:init', () => {
 
         init() {
             this.sortable = new Sortable(this.$el, {
-                group: this.$el.dataset.rowKey,
+                // Одна группа на всю доску: карточки можно таскать и между
+                // колонками (смена статуса), и между строками (смена родителя)
+                group: 'board',
                 animation: 150,
                 ghostClass: 'kanban-ghost',
                 dragClass: 'kanban-dragging',
@@ -48,13 +72,23 @@ document.addEventListener('livewire:init', () => {
 
                     const taskId = Number(evt.item.dataset.taskId);
                     const toStatusId = Number(evt.to.dataset.statusId);
+                    // Строка задаёт родителя; на плоской доске задач
+                    // родителя не трогаем (parentScope отсутствует)
+                    const applyParent = evt.to.dataset.parentScope === 'row';
+                    const parentId = Number(evt.to.dataset.parentId || 0);
 
-                    // Возвращаем DOM в исходное состояние — Livewire сам
-                    // перерисует доску после ответа сервера
-                    const reference = evt.from.children[evt.oldIndex] ?? null;
-                    evt.from.insertBefore(evt.item, reference);
-
-                    this.$wire.moveCard(taskId, toStatusId);
+                    // Оптимистичное перемещение: карточка остаётся там, куда её
+                    // бросили. Сервер — источник правды: после ответа morph либо
+                    // подтвердит позицию, либо вернёт карточку назад (при ошибке
+                    // придёт тост и старая раскладка). Если сам запрос упал —
+                    // принудительно перечитываем доску, чтобы не разъехаться.
+                    this.$wire.moveCard(taskId, toStatusId, parentId, applyParent)
+                        .catch(() => {
+                            window.dispatchEvent(new CustomEvent('toast', {
+                                detail: { message: 'Не удалось сохранить перемещение — доска обновлена.', type: 'error' },
+                            }));
+                            this.$wire.$refresh();
+                        });
                 },
             });
         },
@@ -65,12 +99,30 @@ document.addEventListener('livewire:init', () => {
     }));
 
     // -----------------------------------------------------------------------
-    // Live-обновление доски: подписка на канал проекта в Centrifugo
+    // Доска: live-обновления (Centrifugo) + клиентский коллапс строк/колонок
+    // (без запросов на сервер, состояние переживает перезагрузку в localStorage)
     // -----------------------------------------------------------------------
     window.Alpine.data('boardChannel', () => ({
         subscription: null,
+        collapsedCols: [],
+        collapsedRows: [],
+        statusIds: [],
+        storageKey: '',
 
         init() {
+            // --- Коллапс ---
+            this.statusIds = JSON.parse(this.$el.dataset.statusIds || '[]');
+            this.storageKey = `board-collapse:${this.$el.dataset.channel}:${this.$el.dataset.tab}`;
+
+            try {
+                const saved = JSON.parse(localStorage.getItem(this.storageKey) || '{}');
+                this.collapsedCols = saved.cols ?? [];
+                this.collapsedRows = saved.rows ?? [];
+            } catch {
+                // повреждённое хранилище — начинаем с чистого состояния
+            }
+
+            // --- Centrifugo ---
             const client = getCentrifuge();
             const channel = this.$el.dataset.channel;
 
@@ -86,6 +138,43 @@ document.addEventListener('livewire:init', () => {
             });
 
             this.subscription.subscribe();
+        },
+
+        persistCollapse() {
+            localStorage.setItem(this.storageKey, JSON.stringify({
+                cols: this.collapsedCols,
+                rows: this.collapsedRows,
+            }));
+        },
+
+        toggleCol(id) {
+            this.collapsedCols = this.isColCollapsed(id)
+                ? this.collapsedCols.filter((x) => x !== id)
+                : [...this.collapsedCols, id];
+            this.persistCollapse();
+        },
+
+        toggleRow(key) {
+            this.collapsedRows = this.isRowCollapsed(key)
+                ? this.collapsedRows.filter((x) => x !== key)
+                : [...this.collapsedRows, key];
+            this.persistCollapse();
+        },
+
+        isColCollapsed(id) {
+            return this.collapsedCols.includes(id);
+        },
+
+        isRowCollapsed(key) {
+            return this.collapsedRows.includes(key);
+        },
+
+        get gridStyle() {
+            const template = this.statusIds
+                .map((id) => (this.isColCollapsed(id) ? '64px' : 'minmax(245px, 1fr)'))
+                .join(' ');
+
+            return `grid-template-columns: ${template};`;
         },
 
         destroy() {

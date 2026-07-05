@@ -2,13 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+[x-cloak] {
+    display: none !important;
+}
+
 @layer base {
     html {
         @apply antialiased;
+        /* Нативные контролы (селекты, календари) в тёмном варианте */
+        color-scheme: dark;
     }
 
     body {
         @apply bg-yt-bg text-yt-text;
+    }
+
+    select option {
+        background-color: #2b2d30;
+        color: #e8eaed;
     }
 
     /* Тонкие тёмные скроллбары как в YouTrack */
@@ -29,6 +40,56 @@
     *::-webkit-scrollbar-track {
         background: transparent;
     }
+}
+
+/* Встроенный прогресс-бар wire:navigate (NProgress) — в акцентный цвет */
+#nprogress .bar {
+    background: rgb(var(--accent)) !important;
+}
+
+#nprogress .peg {
+    box-shadow: 0 0 10px rgb(var(--accent)), 0 0 5px rgb(var(--accent)) !important;
+}
+
+#nprogress .spinner-icon {
+    border-top-color: rgb(var(--accent)) !important;
+    border-left-color: rgb(var(--accent)) !important;
+}
+
+/* Свечение сайдбара как в YouTrack, но акцентным цветом пользователя */
+.sidebar-glow {
+    background:
+        radial-gradient(380px 330px at 16px 24px, rgb(var(--accent) / 0.5), transparent 70%),
+        radial-gradient(560px 500px at 30% 10%, rgb(var(--accent) / 0.2), transparent 74%),
+        radial-gradient(400px 700px at 0 36%, rgb(var(--accent) / 0.1), transparent 78%),
+        #1e1f22;
+}
+
+/* Индикатор Livewire-запросов */
+.lw-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgb(var(--accent)) 40%, rgb(var(--accent-hover)) 60%, transparent);
+    background-size: 40% 100%;
+    background-repeat: no-repeat;
+    background-position: -40% 0;
+    transition: opacity 0.15s;
+}
+
+.lw-progress.active {
+    opacity: 1;
+    animation: lw-progress-slide 1s linear infinite;
+}
+
+@keyframes lw-progress-slide {
+    from { background-position: -40% 0; }
+    to { background-position: 140% 0; }
 }
 
 @layer components {
@@ -65,5 +126,11 @@
     .yt-chip {
         @apply inline-flex items-center gap-1 rounded-full border border-yt-border bg-yt-panel
             px-2 py-0.5 text-xs text-yt-muted;
+    }
+
+    /* Значение поля в правой панели задачи: выглядит как текст, работает как select */
+    .yt-field-select {
+        @apply w-full cursor-pointer rounded border-0 bg-transparent p-0 text-sm text-yt-text
+            hover:text-yt-link focus:ring-0;
     }
 }

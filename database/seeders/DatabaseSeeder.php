@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Enums\TaskPriority;
 use App\Enums\TaskType;
 use App\Exceptions\StatusChangeBlockedException;
 use App\Models\Comment;
@@ -65,7 +64,6 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Ревью', 'order' => 3, 'is_final' => false],
             ['name' => 'Тестирование', 'order' => 4, 'is_final' => false],
             ['name' => 'Готово', 'order' => 5, 'is_final' => true],
-            ['name' => 'Отменена', 'order' => 6, 'is_final' => true],
         ]);
 
         $this->seedProjectTasks($portal->fresh());
@@ -174,7 +172,7 @@ class DatabaseSeeder extends Seeder
             'description' => random_int(0, 2) > 0
                 ? "Подробное описание: {$title}.\n\nКритерии приёмки:\n- Функциональность реализована\n- Тесты проходят\n- Код прошёл ревью"
                 : null,
-            'priority' => Arr::random(TaskPriority::cases()),
+            'priority_id' => $project->priorities->random()->id,
             'created_by' => $members->random()->id,
             'assignee_id' => random_int(0, 3) > 0 ? $members->random()->id : null,
             'due_date' => random_int(0, 2) > 0

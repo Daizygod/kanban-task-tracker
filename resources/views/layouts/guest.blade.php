@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark">
+<html lang="ru" class="dark"
+      style="--accent: {{ App\Models\User::hexToRgbTriplet(App\Models\User::DEFAULT_ACCENT) }}; --accent-hover: {{ App\Models\User::hexLightenTriplet(App\Models\User::DEFAULT_ACCENT) }};">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">

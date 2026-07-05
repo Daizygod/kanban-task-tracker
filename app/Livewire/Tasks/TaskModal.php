@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Tasks;
 
-use App\Enums\TaskPriority;
 use App\Exceptions\StatusChangeBlockedException;
 use App\Models\Project;
 use App\Models\Task;
@@ -44,6 +43,11 @@ class TaskModal extends Component
     // Зависимости
     public string $depQuery = '';
 
+    // Фильтры ленты активности
+    public bool $showComments = true;
+
+    public bool $showHistory = true;
+
     #[On('open-task')]
     public function open(int $taskId): void
     {
@@ -73,7 +77,7 @@ class TaskModal extends Component
     private function task(): Task
     {
         return $this->project->tasks()
-            ->with(['status', 'assignee', 'creator', 'parent', 'children.status', 'dependsOn.status', 'dependents.status'])
+            ->with(['status', 'priority', 'assignee', 'creator', 'parent', 'children.status', 'dependsOn.status', 'dependents.status'])
             ->findOrFail($this->taskId);
     }
 
@@ -111,13 +115,13 @@ class TaskModal extends Component
         $this->dispatch('task-saved');
     }
 
-    public function setPriority(string $priority): void
+    public function setPriority(int $priorityId): void
     {
-        if (in_array($priority, array_column(TaskPriority::cases(), 'value'), true)) {
-            $this->task()->update(['priority' => $priority]);
-            $this->publish('task-updated');
-            $this->dispatch('task-saved');
-        }
+        $priority = $this->project->priorities()->findOrFail($priorityId);
+
+        $this->task()->update(['priority_id' => $priority->id]);
+        $this->publish('task-updated');
+        $this->dispatch('task-saved');
     }
 
     public function setDueDate(?string $date): void
@@ -244,11 +248,18 @@ class TaskModal extends Component
     /** Комментарии и смены статусов одной хронологической лентой */
     private function buildFeed(Task $task): Collection
     {
-        $comments = $task->comments()->with('user')->get()
-            ->map(fn ($comment) => ['kind' => 'comment', 'at' => $comment->created_at, 'item' => $comment]);
+        $comments = collect();
+        $logs = collect();
 
-        $logs = $task->statusLogs()->with(['user', 'fromStatus', 'toStatus'])->get()
-            ->map(fn ($log) => ['kind' => 'status', 'at' => $log->created_at, 'item' => $log]);
+        if ($this->showComments) {
+            $comments = $task->comments()->with('user')->get()
+                ->map(fn ($comment) => ['kind' => 'comment', 'at' => $comment->created_at, 'item' => $comment]);
+        }
+
+        if ($this->showHistory) {
+            $logs = $task->statusLogs()->with(['user', 'fromStatus', 'toStatus'])->get()
+                ->map(fn ($log) => ['kind' => 'status', 'at' => $log->created_at, 'item' => $log]);
+        }
 
         return $comments->concat($logs)->sortBy('at')->values();
     }
@@ -288,7 +299,7 @@ class TaskModal extends Component
             'depOptions' => $depOptions,
             'statuses' => $this->project->statuses,
             'members' => $this->project->members()->orderBy('name')->get(),
-            'priorities' => TaskPriority::cases(),
+            'priorities' => $this->project->priorities,
             'totalMinutes' => $timeLogs->sum('minutes'),
         ]);
     }

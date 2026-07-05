@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Tasks;
 
-use App\Enums\TaskPriority;
 use App\Enums\TaskType;
 use App\Models\Project;
 use App\Models\Task;
@@ -27,7 +26,7 @@ class TaskCreateModal extends Component
 
     public ?int $parentId = null;
 
-    public string $priority = 'normal';
+    public ?int $priorityId = null;
 
     public ?int $assigneeId = null;
 
@@ -38,7 +37,7 @@ class TaskCreateModal extends Component
     {
         $this->reset('title', 'description', 'parentId', 'assigneeId', 'dueDate');
         $this->resetValidation();
-        $this->priority = 'normal';
+        $this->priorityId = $this->project->defaultPriority()->id;
         $this->type = in_array($type, ['epic', 'story', 'task'], true) ? $type : 'task';
         $this->show = true;
     }
@@ -55,7 +54,7 @@ class TaskCreateModal extends Component
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:10000'],
             'parentId' => ['nullable', 'integer'],
-            'priority' => ['required', Rule::in(array_column(TaskPriority::cases(), 'value'))],
+            'priorityId' => ['required', Rule::exists('priorities', 'id')->where('project_id', $this->project->id)],
             'assigneeId' => ['nullable', Rule::exists('project_user', 'user_id')->where('project_id', $this->project->id)],
             'dueDate' => ['nullable', 'date'],
         ], attributes: [
@@ -70,7 +69,7 @@ class TaskCreateModal extends Component
             'status_id' => $this->project->statuses->first()->id,
             'title' => $validated['title'],
             'description' => $validated['description'] ?: null,
-            'priority' => $validated['priority'],
+            'priority_id' => $validated['priorityId'],
             'created_by' => Auth::id(),
             'assignee_id' => $validated['assigneeId'] ?: null,
             'due_date' => $validated['dueDate'] ?: null,
@@ -116,7 +115,7 @@ class TaskCreateModal extends Component
         return view('livewire.tasks.task-create-modal', [
             'parentOptions' => $parentOptions,
             'members' => $this->project->members()->orderBy('name')->get(),
-            'priorities' => TaskPriority::cases(),
+            'priorities' => $this->project->priorities,
             'parentLabel' => $parentType === TaskType::Epic ? 'Эпик' : 'История',
         ]);
     }

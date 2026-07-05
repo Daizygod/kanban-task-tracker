@@ -1,72 +1,89 @@
 <div>
     @if ($show && $task)
-        <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-10"
+        <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 pt-10"
              wire:click.self="close"
              x-data x-on:keydown.escape.window="$wire.close()">
-            <div class="flex w-full max-w-4xl flex-col rounded-lg border border-yt-border bg-yt-panel shadow-modal">
-                {{-- Шапка --}}
-                <div class="flex items-center gap-3 border-b border-yt-border-soft px-5 py-3">
-                    <span class="text-xs font-medium {{ $task->status->is_final ? 'text-yt-faint line-through' : 'text-yt-muted' }}">{{ $task->full_number }}</span>
-                    <span class="yt-chip">{{ $task->type->label() }}</span>
-                    @if ($task->parent)
-                        <button wire:click="open({{ $task->parent->id }})" class="yt-chip hover:bg-yt-hover" title="Родитель">
-                            ↑ {{ $task->parent->full_number }}
-                        </button>
-                    @endif
-                    <button wire:click="close" class="ml-auto rounded p-1 text-yt-faint hover:bg-yt-hover hover:text-yt-text">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-                    </button>
-                </div>
-
-                <div class="flex flex-col gap-0 md:flex-row">
+            <div class="flex w-full max-w-[1032px] flex-col rounded-lg border border-yt-border bg-yt-bg shadow-modal">
+                <div class="flex flex-col md:flex-row">
                     {{-- Основная колонка --}}
-                    <div class="min-w-0 flex-1 p-5">
-                        <input type="text" wire:model="titleDraft" wire:change="saveTitle"
-                               class="w-full border-0 bg-transparent p-0 text-lg font-semibold text-yt-text focus:ring-0">
-
-                        {{-- Описание --}}
-                        <div class="mt-4">
-                            @if ($editingDescription)
-                                <textarea wire:model="descriptionDraft" rows="6" class="yt-input" autofocus></textarea>
-                                <div class="mt-2 flex gap-2">
-                                    <button wire:click="saveDescription" class="yt-btn-primary">Сохранить</button>
-                                    <button wire:click="$set('editingDescription', false)" class="yt-btn-secondary">Отмена</button>
-                                </div>
-                            @else
-                                <div wire:click="$set('editingDescription', true)"
-                                     class="min-h-[48px] cursor-text whitespace-pre-wrap rounded border border-transparent p-2 -mx-2 text-sm {{ $task->description ? 'text-yt-text' : 'text-yt-faint' }} hover:border-yt-border-soft hover:bg-yt-surface/50">{{ $task->description ?: 'Добавить описание…' }}</div>
+                    <div class="min-w-0 flex-1 px-8 py-5">
+                        {{-- Шапка как в YouTrack: номер + кто создал/обновил --}}
+                        <div class="flex items-start gap-2 text-sm">
+                            <span class="font-medium {{ $task->status->is_final ? 'text-yt-faint line-through' : 'text-yt-muted' }}">{{ $task->full_number }}</span>
+                            <span class="yt-chip">{{ $task->type->label() }}</span>
+                            <div class="min-w-0 text-[13px] leading-5 text-yt-muted">
+                                Создал(а) <span class="text-yt-text">{{ $task->creator->name }}</span> {{ $task->created_at->diffForHumans() }}
+                                @if ($task->updated_at->ne($task->created_at))
+                                    <br>Обновлено {{ $task->updated_at->diffForHumans() }}
+                                @endif
+                            </div>
+                            @if ($task->parent)
+                                <button wire:click="open({{ $task->parent->id }})" class="ml-auto shrink-0 text-[13px] text-yt-link hover:underline" title="Родитель">
+                                    ↑ {{ $task->parent->full_number }}
+                                </button>
                             @endif
                         </div>
 
-                        {{-- Подзадачи --}}
-                        @if ($task->children->isNotEmpty())
-                            <div class="mt-5">
-                                <div class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-yt-faint">{{ $task->type === App\Enums\TaskType::Epic ? 'Истории' : 'Задачи' }} ({{ $task->children->count() }})</div>
-                                <ul class="divide-y divide-yt-border-soft rounded border border-yt-border-soft">
-                                    @foreach ($task->children as $child)
-                                        <li>
-                                            <button wire:click="open({{ $child->id }})"
-                                                    class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-yt-hover">
-                                                <span class="text-xs text-yt-faint {{ $child->status->is_final ? 'line-through' : '' }}">{{ $child->full_number }}</span>
-                                                <span class="truncate {{ $child->status->is_final ? 'text-yt-muted line-through' : '' }}">{{ $child->title }}</span>
-                                                <span class="yt-chip ml-auto shrink-0">{{ $child->status->name }}</span>
-                                            </button>
-                                        </li>
-                                    @endforeach
-                                </ul>
+                        <input type="text" wire:model="titleDraft" wire:change="saveTitle"
+                               class="my-1.5 w-full border-0 bg-transparent p-0 text-2xl font-semibold leading-7 text-yt-text focus:ring-0">
+
+                        {{-- Описание --}}
+                        @if ($editingDescription)
+                            <textarea wire:model="descriptionDraft" rows="6" class="yt-input" autofocus></textarea>
+                            <div class="mt-2 flex gap-2">
+                                <button wire:click="saveDescription" class="yt-btn-primary">Сохранить</button>
+                                <button wire:click="$set('editingDescription', false)" class="yt-btn-secondary">Отмена</button>
                             </div>
+                        @else
+                            <div wire:click="$set('editingDescription', true)"
+                                 class="-mx-2 min-h-[36px] cursor-text whitespace-pre-wrap rounded px-2 py-1 text-sm leading-relaxed {{ $task->description ? 'text-yt-text' : 'text-yt-faint' }} hover:bg-yt-panel/40">{{ $task->description ?: 'Добавить описание…' }}</div>
                         @endif
 
-                        {{-- Учёт времени --}}
-                        <div class="mt-6">
-                            <div class="mb-1.5 flex items-baseline gap-2">
-                                <span class="text-xs font-semibold uppercase tracking-wide text-yt-faint">Затраченное время</span>
+                        {{-- Связи: зависит от / блокирует / подзадачи --}}
+                        @foreach ([
+                            ['label' => 'Зависит от', 'items' => $task->dependsOn, 'removable' => true, 'dotFor' => 'dep'],
+                            ['label' => 'Блокирует', 'items' => $task->dependents, 'removable' => false, 'dotFor' => 'dependent'],
+                            ['label' => $task->type === App\Enums\TaskType::Epic ? 'Истории' : 'Подзадачи', 'items' => $task->children, 'removable' => false, 'dotFor' => 'child'],
+                        ] as $section)
+                            @if ($section['items']->isNotEmpty())
+                                <div class="mt-5 border-t border-yt-border-soft pt-3">
+                                    <div class="mb-2 flex items-center gap-1.5 text-sm text-yt-text">
+                                        <svg class="h-3 w-3 text-yt-muted" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+                                        {{ $section['label'] }} <span class="text-yt-muted">{{ $section['items']->count() }}</span>
+                                    </div>
+                                    <ul class="space-y-1.5 pl-1">
+                                        @foreach ($section['items'] as $item)
+                                            <li class="group flex items-center gap-2 text-sm" wire:key="{{ $section['dotFor'] }}-{{ $item->id }}">
+                                                <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-bold text-white"
+                                                      style="background: {{ $item->status->is_final ? '#59a869' : ($section['dotFor'] === 'dep' ? '#e44899' : '#366acf') }}">
+                                                    {{ mb_substr($item->status->name, 0, 1) }}
+                                                </span>
+                                                <button wire:click="open({{ $item->id }})" class="shrink-0 text-yt-link hover:underline {{ $item->status->is_final ? 'line-through opacity-70' : '' }}">{{ $item->full_number }}</button>
+                                                <span class="truncate {{ $item->status->is_final ? 'text-yt-muted line-through' : 'text-yt-text' }}">{{ $item->title }}</span>
+                                                <span class="ml-auto shrink-0 text-xs text-yt-faint">{{ $item->status->name }}</span>
+                                                @if ($section['removable'])
+                                                    <button wire:click="removeDependency({{ $item->id }})"
+                                                            class="shrink-0 rounded p-0.5 text-yt-faint opacity-0 hover:text-yt-danger group-hover:opacity-100" title="Убрать зависимость">
+                                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                        @endforeach
+
+                        {{-- Затраченное время --}}
+                        <div class="mt-5 border-t border-yt-border-soft pt-3">
+                            <div class="mb-2 flex items-baseline gap-2 text-sm text-yt-text">
+                                Затраченное время
                                 @if ($totalMinutes > 0)
-                                    <span class="text-xs text-yt-muted">всего {{ intdiv($totalMinutes, 60) }} ч {{ $totalMinutes % 60 }} м</span>
+                                    <span class="text-yt-muted">{{ intdiv($totalMinutes, 60) }} ч {{ $totalMinutes % 60 }} м</span>
                                 @endif
                             </div>
 
-                            <form wire:submit="addTimeLog" class="flex flex-wrap items-start gap-2 rounded border border-yt-border-soft bg-yt-surface/50 p-2">
+                            <form wire:submit="addTimeLog" class="flex flex-wrap items-start gap-2">
                                 <input type="number" step="0.25" min="0" wire:model="timeValue" placeholder="1.5" class="yt-input w-20">
                                 <select wire:model="timeUnit" class="yt-input w-24">
                                     <option value="hours">часов</option>
@@ -80,15 +97,15 @@
                             </form>
 
                             @if ($timeLogs->isNotEmpty())
-                                <ul class="mt-2 divide-y divide-yt-border-soft">
+                                <ul class="mt-2">
                                     @foreach ($timeLogs as $timeLog)
-                                        <li class="flex items-center gap-2 py-1.5 text-sm" wire:key="tl-{{ $timeLog->id }}">
-                                            <span class="w-16 shrink-0 font-medium text-yt-accent-hover">{{ $timeLog->formatted_duration }}</span>
+                                        <li class="group flex items-center gap-3 rounded px-1 py-1 text-sm hover:bg-yt-panel/40" wire:key="tl-{{ $timeLog->id }}">
+                                            <span class="w-16 shrink-0 text-yt-link">{{ $timeLog->formatted_duration }}</span>
                                             <span class="w-20 shrink-0 text-xs text-yt-faint">{{ $timeLog->logged_date->format('d.m.Y') }}</span>
                                             <span class="shrink-0 text-xs text-yt-muted">{{ $timeLog->user->name }}</span>
                                             <span class="min-w-0 flex-1 truncate text-yt-muted">{{ $timeLog->description }}</span>
                                             @if ($timeLog->user_id === auth()->id())
-                                                <button wire:click="deleteTimeLog({{ $timeLog->id }})" class="shrink-0 text-yt-faint hover:text-yt-danger" title="Удалить запись">&times;</button>
+                                                <button wire:click="deleteTimeLog({{ $timeLog->id }})" class="shrink-0 text-yt-faint opacity-0 hover:text-yt-danger group-hover:opacity-100" title="Удалить запись">&times;</button>
                                             @endif
                                         </li>
                                     @endforeach
@@ -96,36 +113,51 @@
                             @endif
                         </div>
 
-                        {{-- Лента активности --}}
-                        <div class="mt-6">
-                            <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-yt-faint">Активность</div>
-                            <ul class="space-y-3">
+                        {{-- Активность --}}
+                        <div class="mt-5 border-t border-yt-border-soft pt-3">
+                            <div class="mb-3 flex items-center gap-1">
+                                <button wire:click="$toggle('showComments')"
+                                        class="rounded p-1.5 {{ $showComments ? 'bg-yt-selected/60 text-yt-link' : 'text-yt-muted hover:bg-yt-panel' }}"
+                                        title="Комментарии">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" /></svg>
+                                </button>
+                                <button wire:click="$toggle('showHistory')"
+                                        class="rounded p-1.5 {{ $showHistory ? 'bg-yt-selected/60 text-yt-link' : 'text-yt-muted hover:bg-yt-panel' }}"
+                                        title="История статусов">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                                </button>
+                                <span class="ml-2 text-[13px] text-yt-muted">Активность</span>
+                            </div>
+
+                            <ul class="space-y-4">
                                 @forelse ($feed as $entry)
                                     @if ($entry['kind'] === 'comment')
                                         <li class="flex gap-2.5" wire:key="feed-c-{{ $entry['item']->id }}">
-                                            <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yt-accent/70 text-[10px] font-semibold text-white">{{ $entry['item']->user->initials() }}</span>
-                                            <div class="min-w-0 flex-1 rounded border border-yt-border-soft bg-yt-surface/50 px-3 py-2">
-                                                <div class="flex items-baseline gap-2 text-xs">
-                                                    <span class="font-medium text-yt-text">{{ $entry['item']->user->name }}</span>
-                                                    <span class="text-yt-faint">{{ $entry['at']->format('d.m.Y H:i') }}</span>
+                                            <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yt-accent text-[10px] font-semibold text-white">{{ $entry['item']->user->initials() }}</span>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-center gap-2 text-sm">
+                                                    <span class="text-yt-text">{{ $entry['item']->user->name }}</span>
+                                                    <span class="h-1 w-1 rounded-full bg-yt-faint"></span>
+                                                    <span class="text-[13px] text-yt-muted">Прокомментировал(а) {{ $entry['at']->diffForHumans() }}</span>
                                                 </div>
-                                                <div class="mt-1 whitespace-pre-wrap text-sm text-yt-text">{{ $entry['item']->body }}</div>
+                                                <div class="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-yt-text">{{ $entry['item']->body }}</div>
                                             </div>
                                         </li>
                                     @else
-                                        <li class="flex items-center gap-2.5 text-xs text-yt-muted" wire:key="feed-s-{{ $entry['item']->id }}">
-                                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yt-panel ring-1 ring-yt-border">
-                                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" /></svg>
+                                        <li class="flex items-center gap-2.5" wire:key="feed-s-{{ $entry['item']->id }}">
+                                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yt-panel">
+                                                <svg class="h-3 w-3 text-yt-muted" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" /></svg>
                                             </span>
-                                            <span>
-                                                <span class="font-medium text-yt-text">{{ $entry['item']->user->name }}</span>
+                                            <span class="min-w-0 text-[13px] text-yt-muted">
+                                                <span class="text-yt-text">{{ $entry['item']->user->name }}</span>
+                                                <span class="mx-1 text-yt-faint">·</span>
                                                 @if ($entry['item']->fromStatus)
-                                                    перевёл(а) из «{{ $entry['item']->fromStatus->name }}» в «{{ $entry['item']->toStatus?->name ?? '—' }}»
-                                                @else
-                                                    установил(а) статус «{{ $entry['item']->toStatus?->name ?? '—' }}»
+                                                    <span class="text-yt-faint">{{ $entry['item']->fromStatus->name }}</span> →
                                                 @endif
+                                                <span class="text-yt-text">{{ $entry['item']->toStatus?->name ?? '—' }}</span>
+                                                <span class="mx-1 text-yt-faint">·</span>
+                                                {{ $entry['at']->diffForHumans() }}
                                             </span>
-                                            <span class="text-yt-faint">{{ $entry['at']->format('d.m.Y H:i') }}</span>
                                         </li>
                                     @endif
                                 @empty
@@ -133,93 +165,108 @@
                                 @endforelse
                             </ul>
 
-                            <form wire:submit="addComment" class="mt-3">
-                                <textarea wire:model="commentBody" rows="2" class="yt-input" placeholder="Написать комментарий…"></textarea>
-                                @error('commentBody') <p class="mt-1 text-xs text-yt-danger">{{ $message }}</p> @enderror
-                                <div class="mt-2 flex justify-end">
-                                    <button type="submit" class="yt-btn-primary" wire:loading.attr="disabled">Отправить</button>
+                            <form wire:submit="addComment" class="mt-4 flex gap-2.5">
+                                <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yt-accent text-[10px] font-semibold text-white">{{ auth()->user()->initials() }}</span>
+                                <div class="flex-1">
+                                    <textarea wire:model="commentBody" rows="2" class="yt-input" placeholder="Написать комментарий…"></textarea>
+                                    @error('commentBody') <p class="mt-1 text-xs text-yt-danger">{{ $message }}</p> @enderror
+                                    <div class="mt-2 flex justify-end">
+                                        <button type="submit" class="yt-btn-primary" wire:loading.attr="disabled">Отправить</button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
                     </div>
 
-                    {{-- Правая колонка: метаданные --}}
-                    <div class="w-full shrink-0 space-y-4 border-t border-yt-border-soft bg-yt-surface/40 p-5 md:w-64 md:border-l md:border-t-0">
-                        <div>
-                            <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-yt-faint">Статус</label>
-                            <select class="yt-input" wire:change="setStatus($event.target.value)">
-                                @foreach ($statuses as $status)
-                                    <option value="{{ $status->id }}" @selected($status->id === $task->status_id)>{{ $status->name }}{{ $status->is_final ? ' ✓' : '' }}</option>
-                                @endforeach
-                            </select>
+                    {{-- Правая панель полей — как в YouTrack: label сверху, значение ниже, бейдж справа --}}
+                    <div class="w-full shrink-0 border-t border-yt-border-soft md:w-60 md:border-l md:border-t-0">
+                        <div class="flex justify-end px-3 pt-3">
+                            <button wire:click="close" class="rounded p-1 text-yt-muted hover:bg-yt-panel hover:text-yt-text">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                            </button>
                         </div>
 
-                        <div>
-                            <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-yt-faint">Исполнитель</label>
-                            <select class="yt-input" wire:change="setAssignee($event.target.value)">
-                                <option value="">Не назначен</option>
-                                @foreach ($members as $member)
-                                    <option value="{{ $member->id }}" @selected($member->id === $task->assignee_id)>{{ $member->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-yt-faint">Приоритет</label>
-                            <select class="yt-input" wire:change="setPriority($event.target.value)"
-                                    style="border-left: 3px solid {{ $task->priority->color() }}">
-                                @foreach ($priorities as $priorityCase)
-                                    <option value="{{ $priorityCase->value }}" @selected($priorityCase === $task->priority)>{{ $priorityCase->label() }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-yt-faint">Срок</label>
-                            <input type="date" value="{{ $task->due_date?->toDateString() }}"
-                                   wire:change="setDueDate($event.target.value)" class="yt-input">
-                        </div>
-
-                        {{-- Зависимости --}}
-                        <div>
-                            <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-yt-faint">Зависит от</label>
-                            <div class="flex flex-wrap gap-1.5">
-                                @forelse ($task->dependsOn as $dep)
-                                    <span class="yt-chip {{ $dep->status->is_final ? 'opacity-60' : 'border-yt-danger/50 text-yt-text' }}" wire:key="dep-{{ $dep->id }}">
-                                        <button wire:click="open({{ $dep->id }})" class="hover:underline {{ $dep->status->is_final ? 'line-through' : '' }}">{{ $dep->full_number }}</button>
-                                        <button wire:click="removeDependency({{ $dep->id }})" class="text-yt-faint hover:text-yt-danger" title="Убрать зависимость">&times;</button>
-                                    </span>
-                                @empty
-                                    <span class="text-xs text-yt-faint">нет</span>
-                                @endforelse
+                        <div class="space-y-4 px-4 pb-5 pt-1">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <div class="text-xs leading-5 text-yt-muted">Проект</div>
+                                    <div class="truncate text-sm text-yt-text">{{ $project->name }}</div>
+                                </div>
+                                <span class="mt-1 flex h-5 w-6 shrink-0 items-center justify-center rounded bg-yt-accent text-[9px] font-bold text-white">{{ mb_substr($project->key, 0, 2) }}</span>
                             </div>
-                            <div class="relative mt-2">
-                                <input type="text" wire:model.live.debounce.300ms="depQuery" placeholder="Найти задачу…" class="yt-input text-xs">
-                                @if ($depOptions->isNotEmpty())
-                                    <div class="absolute z-30 mt-1 w-full rounded border border-yt-border bg-yt-panel py-1 shadow-modal">
-                                        @foreach ($depOptions as $option)
-                                            <button wire:click="addDependency({{ $option->id }})"
-                                                    class="block w-full truncate px-2 py-1 text-left text-xs hover:bg-yt-hover">
-                                                {{ $option->full_number }} · {{ $option->title }}
-                                            </button>
+
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-xs leading-5 text-yt-muted">Приоритет</div>
+                                    <select class="yt-field-select" wire:change="setPriority($event.target.value)">
+                                        @foreach ($priorities as $priorityOption)
+                                            <option value="{{ $priorityOption->id }}" @selected($priorityOption->id === $task->priority_id)>{{ $priorityOption->name }}</option>
                                         @endforeach
-                                    </div>
+                                    </select>
+                                </div>
+                                <span class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"
+                                      style="background: {{ $task->priority->color }}">{{ mb_substr($task->priority->name, 0, 1) }}</span>
+                            </div>
+
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-xs leading-5 text-yt-muted">Исполнитель</div>
+                                    <select class="yt-field-select" wire:change="setAssignee($event.target.value)">
+                                        <option value="">Не назначен</option>
+                                        @foreach ($members as $member)
+                                            <option value="{{ $member->id }}" @selected($member->id === $task->assignee_id)>{{ $member->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                @if ($task->assignee)
+                                    <span class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-yt-accent text-[8px] font-semibold text-white">{{ $task->assignee->initials() }}</span>
                                 @endif
                             </div>
-                            @if ($task->dependents->isNotEmpty())
-                                <div class="mt-2 text-xs text-yt-faint">
-                                    Блокирует:
-                                    @foreach ($task->dependents as $dependent)
-                                        <button wire:click="open({{ $dependent->id }})" class="text-yt-muted hover:underline">{{ $dependent->full_number }}</button>@if(!$loop->last), @endif
-                                    @endforeach
-                                </div>
-                            @endif
-                        </div>
 
-                        <div class="border-t border-yt-border-soft pt-3 text-xs text-yt-faint">
-                            <div>Проект: {{ $project->name }}</div>
-                            <div class="mt-1">Создал(а) {{ $task->creator->name }}</div>
-                            <div>{{ $task->created_at->format('d.m.Y H:i') }}</div>
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-xs leading-5 text-yt-muted">Статус</div>
+                                    <select class="yt-field-select" wire:change="setStatus($event.target.value)">
+                                        @foreach ($statuses as $status)
+                                            <option value="{{ $status->id }}" @selected($status->id === $task->status_id)>{{ $status->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <span class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"
+                                      style="background: {{ $task->status->is_final ? '#59a869' : '#366acf' }}">{{ mb_substr($task->status->name, 0, 1) }}</span>
+                            </div>
+
+                            <div>
+                                <div class="text-xs leading-5 text-yt-muted">Срок <span class="text-yt-faint">(необязательно)</span></div>
+                                <div class="flex items-center gap-1">
+                                    <input type="date" value="{{ $task->due_date?->toDateString() }}"
+                                           wire:change="setDueDate($event.target.value)"
+                                           wire:key="due-{{ $task->id }}-{{ $task->due_date?->toDateString() ?? 'none' }}"
+                                           class="yt-field-select">
+                                    @if ($task->due_date)
+                                        <button wire:click="setDueDate(null)" class="shrink-0 rounded p-0.5 text-yt-faint hover:text-yt-danger" title="Убрать срок">
+                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="text-xs leading-5 text-yt-muted">Добавить зависимость</div>
+                                <div class="relative mt-1">
+                                    <input type="text" wire:model.live.debounce.300ms="depQuery" placeholder="Номер или название…" class="yt-input px-2 py-1 text-xs">
+                                    @if ($depOptions->isNotEmpty())
+                                        <div class="absolute z-30 mt-1 w-full rounded-lg border border-yt-border bg-yt-panel py-1 shadow-modal">
+                                            @foreach ($depOptions as $option)
+                                                <button wire:click="addDependency({{ $option->id }})"
+                                                        class="block w-full truncate px-2 py-1 text-left text-xs hover:bg-yt-hover">
+                                                    {{ $option->full_number }} · {{ $option->title }}
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

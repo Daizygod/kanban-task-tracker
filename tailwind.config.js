@@ -16,31 +16,40 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter', 'Segoe UI', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', ...defaultTheme.fontFamily.sans],
             },
             colors: {
-                // Палитра в духе тёмной темы YouTrack
+                // Точные токены Ring UI (тёмная тема), сняты computed-стилями
+                // из референсных файлов YouTrack Agile Board*.html
                 yt: {
-                    bg: '#1e1f22',
-                    surface: '#26282e',
-                    panel: '#2b2d33',
-                    card: '#30323a',
-                    hover: '#393b42',
-                    border: '#43454a',
-                    'border-soft': '#33353a',
-                    text: '#dfe1e5',
-                    muted: '#9da0a8',
-                    faint: '#6f737a',
-                    accent: '#3574f0',
-                    'accent-hover': '#4a88f7',
+                    bg: '#1e1f22',           // content/navigation background
+                    surface: '#232428',      // свимлейны, лёгкое выделение
+                    panel: '#2b2d30',        // popup/sidebar background
+                    board: '#2b2d30',        // фон канбан-доски и таймшита (правка пользователя)
+                    'board-border': '#232428', // разделители на фоне доски
+                    swimlane: '#26282c',     // полоса свимлейна на фоне доски
+                    card: '#1e1f22',         // карточка = фон, выделяется рамкой
+                    hover: '#212d45',        // hover background (синеватый)
+                    selected: '#2e436e',     // selected background
+                    border: '#43454a',       // line/borders/tag
+                    'border-soft': '#313338',
+                    'border-strong': '#5a5d63',
+                    text: '#ffffff',
+                    muted: '#9da0a8',        // secondary/icon
+                    faint: '#7a7e87',
+                    // Акцент настраивается пользователем: CSS-переменные в layout
+                    accent: 'rgb(var(--accent) / <alpha-value>)',
+                    'accent-hover': 'rgb(var(--accent-hover) / <alpha-value>)',
+                    link: '#99bbff',
                     danger: '#e5493a',
-                    success: '#23a186',
-                    warning: '#ffc84a',
+                    success: '#59a869',
+                    warning: '#f5c538',
+                    blocked: '#e44899',
                 },
             },
             boxShadow: {
-                card: '0 1px 2px rgba(0, 0, 0, 0.35)',
-                modal: '0 8px 40px rgba(0, 0, 0, 0.55)',
+                card: '0 0 3px 0 rgba(0, 0, 0, 0.1)',
+                modal: '0 4px 16px 0 rgba(0, 0, 0, 0.31), 0 2px 6px 0 rgba(0, 0, 0, 0.37)',
             },
         },
     },

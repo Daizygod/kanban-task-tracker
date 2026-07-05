@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Projects;
 
+use App\Models\Priority;
 use App\Models\Project;
 use App\Models\Status;
 use App\Models\User;
@@ -23,6 +24,10 @@ class ProjectSettings extends Component
     public string $newStatusName = '';
 
     public bool $newStatusFinal = false;
+
+    public string $newPriorityName = '';
+
+    public string $newPriorityColor = '#59A869';
 
     public function mount(Project $project): void
     {
@@ -106,17 +111,22 @@ class ProjectSettings extends Component
         $this->findStatus($statusId)->update(['name' => $newName]);
     }
 
-    public function toggleFinal(int $statusId): void
+    /**
+     * Финальный статус ровно один: пометка другого статуса финальным
+     * автоматически снимает флаг с прежнего (поведение радиокнопки).
+     */
+    public function makeFinal(int $statusId): void
     {
         $status = $this->findStatus($statusId);
 
-        if ($status->is_final && $this->isLastFinal($status)) {
-            $this->dispatch('toast', message: 'В проекте должен остаться хотя бы один финальный статус.', type: 'error');
+        if ($status->is_final) {
+            $this->dispatch('toast', message: 'Финальный статус должен быть ровно один — чтобы снять флаг, назначьте финальным другой статус.', type: 'error');
 
             return;
         }
 
-        $status->update(['is_final' => ! $status->is_final]);
+        $this->project->statuses()->where('is_final', true)->update(['is_final' => false]);
+        $status->update(['is_final' => true]);
     }
 
     public function moveStatus(int $statusId, string $direction): void
@@ -142,8 +152,8 @@ class ProjectSettings extends Component
     {
         $status = $this->findStatus($statusId);
 
-        if ($status->is_final && $this->isLastFinal($status)) {
-            $this->dispatch('toast', message: 'Нельзя удалить единственный финальный статус.', type: 'error');
+        if ($status->is_final) {
+            $this->dispatch('toast', message: 'Нельзя удалить финальный статус — сначала назначьте финальным другой.', type: 'error');
 
             return;
         }
@@ -164,6 +174,10 @@ class ProjectSettings extends Component
             attributes: ['newStatusName' => 'название статуса'],
         );
 
+        if ($this->newStatusFinal) {
+            $this->project->statuses()->where('is_final', true)->update(['is_final' => false]);
+        }
+
         $this->project->statuses()->create([
             'name' => trim($this->newStatusName),
             'order' => ((int) $this->project->statuses()->max('order')) + 1,
@@ -178,12 +192,110 @@ class ProjectSettings extends Component
         return $this->project->statuses()->findOrFail($statusId);
     }
 
-    private function isLastFinal(Status $status): bool
+    // -------------------------------------------------------------- Приоритеты
+
+    public function renamePriority(int $priorityId, string $newName): void
     {
-        return $this->project->statuses()
-            ->where('is_final', true)
-            ->whereKeyNot($status->id)
-            ->doesntExist();
+        $newName = trim($newName);
+
+        if ($newName === '') {
+            $this->dispatch('toast', message: 'Название приоритета не может быть пустым.', type: 'error');
+
+            return;
+        }
+
+        $this->findPriority($priorityId)->update(['name' => $newName]);
+    }
+
+    public function setPriorityColor(int $priorityId, string $color): void
+    {
+        if (! preg_match('/^#[0-9a-fA-F]{6}$/', $color)) {
+            return;
+        }
+
+        $this->findPriority($priorityId)->update(['color' => mb_strtoupper($color)]);
+        $this->dispatch('task-saved');
+    }
+
+    /**
+     * Приоритет «по умолчанию» ровно один — как финальный статус.
+     */
+    public function makeDefaultPriority(int $priorityId): void
+    {
+        $priority = $this->findPriority($priorityId);
+
+        if ($priority->is_default) {
+            $this->dispatch('toast', message: 'Приоритет по умолчанию должен быть ровно один — назначьте другим приоритет по умолчанию.', type: 'error');
+
+            return;
+        }
+
+        $this->project->priorities()->where('is_default', true)->update(['is_default' => false]);
+        $priority->update(['is_default' => true]);
+    }
+
+    public function movePriority(int $priorityId, string $direction): void
+    {
+        $priorities = $this->project->priorities()->get()->values();
+        $index = $priorities->search(fn (Priority $p) => $p->id === $priorityId);
+
+        $neighborIndex = $direction === 'up' ? $index - 1 : $index + 1;
+
+        if ($index === false || $neighborIndex < 0 || $neighborIndex >= $priorities->count()) {
+            return;
+        }
+
+        $current = $priorities[$index];
+        $neighbor = $priorities[$neighborIndex];
+
+        [$currentOrder, $neighborOrder] = [$current->order, $neighbor->order];
+        $current->update(['order' => $neighborOrder]);
+        $neighbor->update(['order' => $currentOrder]);
+    }
+
+    public function deletePriority(int $priorityId): void
+    {
+        $priority = $this->findPriority($priorityId);
+
+        if ($priority->is_default) {
+            $this->dispatch('toast', message: 'Нельзя удалить приоритет по умолчанию — сначала назначьте другой.', type: 'error');
+
+            return;
+        }
+
+        if ($this->project->priorities()->count() === 1) {
+            $this->dispatch('toast', message: 'Нельзя удалить последний приоритет проекта.', type: 'error');
+
+            return;
+        }
+
+        // Задачи с удаляемым приоритетом переводятся на приоритет по умолчанию
+        $default = $this->project->priorities()->where('is_default', true)->first();
+        $priority->tasks()->update(['priority_id' => $default->id]);
+
+        $priority->delete();
+    }
+
+    public function addPriority(): void
+    {
+        $this->validate([
+            'newPriorityName' => ['required', 'string', 'max:60'],
+            'newPriorityColor' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+        ], attributes: ['newPriorityName' => 'название приоритета', 'newPriorityColor' => 'цвет']);
+
+        $this->project->priorities()->create([
+            'name' => trim($this->newPriorityName),
+            'color' => mb_strtoupper($this->newPriorityColor),
+            'order' => ((int) $this->project->priorities()->max('order')) + 1,
+            'is_default' => false,
+        ]);
+
+        $this->reset('newPriorityName');
+    }
+
+    private function findPriority(int $priorityId): Priority
+    {
+        return $this->project->priorities()->findOrFail($priorityId);
     }
 
     public function render()
@@ -191,6 +303,7 @@ class ProjectSettings extends Component
         return view('livewire.projects.project-settings', [
             'members' => $this->project->members()->orderBy('name')->get(),
             'statuses' => $this->project->statuses()->withCount('tasks')->get(),
+            'priorities' => $this->project->priorities()->withCount('tasks')->get(),
         ])->title("Настройки — {$this->project->name}");
     }
 }

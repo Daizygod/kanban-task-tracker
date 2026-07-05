@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark">
+@php($accentHex = auth()->user()?->accentColor() ?? App\Models\User::DEFAULT_ACCENT)
+<html lang="ru" class="dark"
+      style="--accent: {{ App\Models\User::hexToRgbTriplet($accentHex) }}; --accent-hover: {{ App\Models\User::hexLightenTriplet($accentHex) }};">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,32 +20,33 @@
     <body class="h-screen overflow-hidden font-sans">
         <div class="flex h-full">
             {{-- Сайдбар --}}
-            <aside class="flex w-56 shrink-0 flex-col border-r border-yt-border-soft bg-yt-surface">
-                <a href="{{ route('projects.index') }}" class="flex items-center gap-2 px-4 py-4">
-                    <span class="flex h-7 w-7 items-center justify-center rounded bg-yt-accent text-sm font-bold text-white">К</span>
-                    <span class="text-sm font-semibold tracking-wide">{{ config('app.name') }}</span>
+            {{-- Сайдбар: геометрия YouTrack — 200px, пункты 40px, подсветка rgba(81,95,104,.5) r6 --}}
+            <aside class="sidebar-glow flex w-[200px] shrink-0 flex-col">
+                <a href="{{ route('projects.index') }}" class="flex items-center gap-2.5 px-4 pb-5 pt-4">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-yt-accent text-base font-bold text-white">К</span>
+                    <span class="text-[17px] font-semibold tracking-tight">{{ config('app.name') }}</span>
                 </a>
 
-                <nav class="flex-1 space-y-0.5 overflow-y-auto px-2 pb-4">
+                <nav class="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
                     <a href="{{ route('projects.index') }}"
-                       class="flex items-center gap-2 rounded px-2 py-1.5 text-sm {{ request()->routeIs('projects.index') ? 'bg-yt-hover text-yt-text' : 'text-yt-muted hover:bg-yt-hover hover:text-yt-text' }}">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 7.125C2.25 6.504 2.754 6 3.375 6h6c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-6a1.125 1.125 0 0 1-1.125-1.125v-3.75ZM14.25 8.625c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v8.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 0 1-1.125-1.125v-8.25ZM3.75 16.125c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 0 1-1.125-1.125v-2.25Z" /></svg>
+                       class="flex h-10 items-center gap-3 rounded-md px-3 text-sm {{ request()->routeIs('projects.index') ? 'bg-[rgba(81,95,104,0.5)] text-yt-text' : 'text-yt-muted hover:bg-[rgba(81,95,104,0.3)] hover:text-yt-text' }}">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 7.125C2.25 6.504 2.754 6 3.375 6h6c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-6a1.125 1.125 0 0 1-1.125-1.125v-3.75ZM14.25 8.625c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v8.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 0 1-1.125-1.125v-8.25ZM3.75 16.125c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 0 1-1.125-1.125v-2.25Z" /></svg>
                         Проекты
                     </a>
                     <a href="{{ route('time.index') }}"
-                       class="flex items-center gap-2 rounded px-2 py-1.5 text-sm {{ request()->routeIs('time.index') ? 'bg-yt-hover text-yt-text' : 'text-yt-muted hover:bg-yt-hover hover:text-yt-text' }}">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                       class="flex h-10 items-center gap-3 rounded-md px-3 text-sm {{ request()->routeIs('time.index') ? 'bg-[rgba(81,95,104,0.5)] text-yt-text' : 'text-yt-muted hover:bg-[rgba(81,95,104,0.3)] hover:text-yt-text' }}">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
                         Моё время
                     </a>
 
                     @auth
                         @php($sidebarProjects = auth()->user()->projects()->orderBy('name')->get())
                         @if ($sidebarProjects->isNotEmpty())
-                            <div class="px-2 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-yt-faint">Мои проекты</div>
+                            <div class="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-yt-faint">Мои проекты</div>
                             @foreach ($sidebarProjects as $sidebarProject)
                                 <a href="{{ route('projects.board', $sidebarProject) }}"
-                                   class="flex items-center gap-2 rounded px-2 py-1.5 text-sm {{ request()->route('project')?->is($sidebarProject) ? 'bg-yt-hover text-yt-text' : 'text-yt-muted hover:bg-yt-hover hover:text-yt-text' }}">
-                                    <span class="flex h-4 w-4 items-center justify-center rounded-sm bg-yt-panel text-[9px] font-bold text-yt-muted ring-1 ring-yt-border">{{ mb_substr($sidebarProject->key, 0, 1) }}</span>
+                                   class="flex h-10 items-center gap-3 rounded-md px-3 text-sm {{ request()->route('project')?->is($sidebarProject) ? 'bg-[rgba(81,95,104,0.5)] text-yt-text' : 'text-yt-muted hover:bg-[rgba(81,95,104,0.3)] hover:text-yt-text' }}">
+                                    <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-yt-panel text-[10px] font-bold text-yt-muted ring-1 ring-yt-border">{{ mb_substr($sidebarProject->key, 0, 1) }}</span>
                                     <span class="truncate">{{ $sidebarProject->name }}</span>
                                 </a>
                             @endforeach
@@ -74,7 +77,7 @@
             {{-- Контент --}}
             <div class="flex min-w-0 flex-1 flex-col">
                 @if (isset($header))
-                    <header class="flex h-14 shrink-0 items-center border-b border-yt-border-soft bg-yt-surface px-6">
+                    <header class="shrink-0 border-b border-yt-border-soft bg-yt-bg">
                         {{ $header }}
                     </header>
                 @endif

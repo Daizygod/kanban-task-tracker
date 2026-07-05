@@ -1,8 +1,6 @@
 services:
     app:
         build: docker/php
-        # На Windows-маунтах storage принадлежит root — чиним права перед стартом fpm;
-        # скомпилированные вьюхи держим в /tmp контейнера (быстрее, чем bind mount)
         command: sh -c "mkdir -p /tmp/laravel-views && chmod 777 /tmp/laravel-views && chmod -R 777 storage bootstrap/cache && exec php-fpm"
         volumes:
             - .:/var/www/html
@@ -25,10 +23,12 @@ services:
                 condition: service_started
         restart: unless-stopped
 
-    nginx:
+    # Внутренний веб-сервер стека; наружу смотрит только на локальный порт —
+    # системный nginx хоста проксирует kanban.nepalimsya.ru сюда
+    webserver:
         image: nginx:1.27-alpine
         ports:
-            - "8080:80"
+            - "127.0.0.1:8090:80"
         volumes:
             - .:/var/www/html
             - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
@@ -40,15 +40,13 @@ services:
     postgres:
         image: postgres:16-alpine
         environment:
-            POSTGRES_DB: kanban
-            POSTGRES_USER: kanban
-            POSTGRES_PASSWORD: secret
+            POSTGRES_DB: ${DB_DATABASE:-kanban}
+            POSTGRES_USER: ${DB_USERNAME:-kanban}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
         volumes:
             - pgdata:/var/lib/postgresql/data
-        ports:
-            - "55432:5432"
         healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U kanban -d kanban"]
+            test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-kanban} -d ${DB_DATABASE:-kanban}"]
             interval: 5s
             timeout: 3s
             retries: 10
@@ -60,12 +58,15 @@ services:
 
     centrifugo:
         image: centrifugo/centrifugo:v5
-        command: centrifugo -c /centrifugo/config.json
-        volumes:
-            - ./docker/centrifugo/config.json:/centrifugo/config.json:ro
+        command: centrifugo
+        environment:
+            CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_HMAC_SECRET}
+            CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY}
+            CENTRIFUGO_ALLOWED_ORIGINS: ${APP_URL:-https://kanban.nepalimsya.ru}
+            CENTRIFUGO_ALLOW_SUBSCRIBE_FOR_CLIENT: "true"
         restart: unless-stopped
 
-    # Одноразовый контейнер сборки фронтенда: собирает assets и завершается
+    # Одноразовая сборка фронтенда
     node:
         image: node:20-alpine
         working_dir: /var/www/html
@@ -73,12 +74,6 @@ services:
             - .:/var/www/html
         command: sh -c "npm install && npm run build"
         restart: "no"
-
-    mailpit:
-        image: axllent/mailpit
-        ports:
-            - "8025:8025"
-        restart: unless-stopped
 
 volumes:
     pgdata:

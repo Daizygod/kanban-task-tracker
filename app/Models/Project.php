@@ -29,6 +29,13 @@ class Project extends Model
                 ['name' => 'Завершена', 'order' => 3, 'is_final' => true],
             ]);
 
+            $project->priorities()->createMany([
+                ['name' => 'Бэклог', 'color' => '#7A8087', 'order' => 1, 'is_default' => true],
+                ['name' => 'Обычный', 'color' => '#59A869', 'order' => 2, 'is_default' => false],
+                ['name' => 'Срочный', 'color' => '#F6743E', 'order' => 3, 'is_default' => false],
+                ['name' => 'P1', 'color' => '#E5493A', 'order' => 4, 'is_default' => false],
+            ]);
+
             // Создатель автоматически становится участником
             $project->members()->syncWithoutDetaching([$project->owner_id]);
         });
@@ -54,6 +61,16 @@ class Project extends Model
     public function statuses(): HasMany
     {
         return $this->hasMany(Status::class)->orderBy('order');
+    }
+
+    public function priorities(): HasMany
+    {
+        return $this->hasMany(Priority::class)->orderBy('order');
+    }
+
+    public function defaultPriority(): Priority
+    {
+        return $this->priorities()->where('is_default', true)->firstOrFail();
     }
 
     public function tasks(): HasMany

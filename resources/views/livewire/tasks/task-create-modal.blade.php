@@ -49,9 +49,9 @@
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <label class="mb-1 block text-xs font-medium text-yt-muted">Приоритет</label>
-                            <select wire:model="priority" class="yt-input">
-                                @foreach ($priorities as $priorityCase)
-                                    <option value="{{ $priorityCase->value }}">{{ $priorityCase->label() }}</option>
+                            <select wire:model="priorityId" class="yt-input">
+                                @foreach ($priorities as $priorityOption)
+                                    <option value="{{ $priorityOption->id }}">{{ $priorityOption->name }}</option>
                                 @endforeach
                             </select>
                         </div>

@@ -20,8 +20,7 @@ return new class extends Migration
             $table->foreignId('status_id')->constrained('statuses')->restrictOnDelete();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->enum('priority', ['minor', 'normal', 'major', 'critical', 'show-stopper'])
-                ->default('normal');
+            $table->foreignId('priority_id')->constrained('priorities')->restrictOnDelete();
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('assignee_id')->nullable()->constrained('users')->nullOnDelete();
             $table->date('due_date')->nullable();

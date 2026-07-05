@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\TaskPriority;
 use App\Enums\TaskType;
 use App\Exceptions\StatusChangeBlockedException;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -26,7 +25,7 @@ class Task extends Model
         'status_id',
         'title',
         'description',
-        'priority',
+        'priority_id',
         'created_by',
         'assignee_id',
         'due_date',
@@ -36,7 +35,6 @@ class Task extends Model
     {
         return [
             'type' => TaskType::class,
-            'priority' => TaskPriority::class,
             'due_date' => 'date',
         ];
     }
@@ -83,6 +81,11 @@ class Task extends Model
     public function status(): BelongsTo
     {
         return $this->belongsTo(Status::class);
+    }
+
+    public function priority(): BelongsTo
+    {
+        return $this->belongsTo(Priority::class);
     }
 
     public function creator(): BelongsTo

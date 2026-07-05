@@ -20,10 +20,14 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
+    /** Акцентный цвет по умолчанию — фуксия */
+    public const DEFAULT_ACCENT = '#FF318C';
+
     protected $fillable = [
         'name',
         'email',
         'password',
+        'accent_color',
     ];
 
     /**
@@ -64,6 +68,29 @@ class User extends Authenticatable
     public function timeLogs(): HasMany
     {
         return $this->hasMany(TimeLog::class);
+    }
+
+    public function accentColor(): string
+    {
+        return $this->accent_color ?: self::DEFAULT_ACCENT;
+    }
+
+    /** «255 49 140» — для CSS-переменной rgb(var(--accent)) */
+    public static function hexToRgbTriplet(string $hex): string
+    {
+        [$r, $g, $b] = sscanf(ltrim($hex, '#'), '%02x%02x%02x');
+
+        return "{$r} {$g} {$b}";
+    }
+
+    /** Осветлённый вариант для hover: каждый канал на 18% ближе к белому */
+    public static function hexLightenTriplet(string $hex): string
+    {
+        [$r, $g, $b] = sscanf(ltrim($hex, '#'), '%02x%02x%02x');
+
+        $mix = fn (int $c) => (int) round($c + (255 - $c) * 0.18);
+
+        return $mix($r).' '.$mix($g).' '.$mix($b);
     }
 
     /** Инициалы для аватара-кружка */
