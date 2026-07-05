@@ -15,8 +15,8 @@
     <body class="font-sans antialiased">
         <div class="flex min-h-screen flex-col items-center bg-yt-bg pt-6 sm:justify-center sm:pt-0">
             <a href="/" wire:navigate class="flex items-center gap-3">
-                <span class="flex h-12 w-12 items-center justify-center rounded-lg bg-yt-accent text-xl font-bold text-white">К</span>
-                <span class="text-lg font-semibold">{{ config('app.name') }}</span>
+                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-yt-accent text-xl font-bold leading-none text-white">К</span>
+                <span class="whitespace-nowrap text-lg font-semibold">{{ config('app.name') }}</span>
             </a>
 
             <div class="mt-6 w-full overflow-hidden rounded-lg border border-yt-border-soft bg-yt-panel px-6 py-6 shadow-modal sm:max-w-md">
