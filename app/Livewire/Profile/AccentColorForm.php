@@ -10,7 +10,7 @@ class AccentColorForm extends Component
 {
     public string $accentColor = '';
 
-    /** Готовые варианты в палитре YouTrack */
+    /** Готовые варианты акцентного цвета */
     public const PRESETS = [
         '#FF318C' => 'Фуксия',
         '#366ACF' => 'Синий',

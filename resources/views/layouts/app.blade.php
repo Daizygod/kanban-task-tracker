@@ -20,7 +20,7 @@
     <body class="h-screen overflow-hidden font-sans">
         <div class="flex h-full">
             {{-- Сайдбар --}}
-            {{-- Сайдбар: геометрия YouTrack — 200px, пункты 40px, подсветка rgba(81,95,104,.5) r6 --}}
+            {{-- Сайдбар: 200px, пункты 40px, полупрозрачная подсветка активного --}}
             <aside class="sidebar-glow flex w-[200px] shrink-0 flex-col">
                 <a href="{{ route('projects.index') }}" class="flex items-center gap-2.5 px-4 pb-5 pt-4">
                     <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-yt-accent text-base font-bold text-white">К</span>

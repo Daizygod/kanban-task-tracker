@@ -6,7 +6,7 @@
     $hasOpenBlockers = $task->dependsOn->contains(fn ($dep) => ! $dep->status->is_final);
 @endphp
 
-{{-- Карточка YouTrack: фон = фон доски, рамка #43454a, полоска приоритета 4px внутри рамки --}}
+{{-- Карточка доски: рамка #43454a, полоска приоритета 4px внутри рамки --}}
 <div {{ $attributes }}
      data-task-id="{{ $task->id }}"
      wire:click="openTask({{ $task->id }})"

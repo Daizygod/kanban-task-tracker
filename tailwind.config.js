@@ -19,8 +19,7 @@ export default {
                 sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', ...defaultTheme.fontFamily.sans],
             },
             colors: {
-                // Точные токены Ring UI (тёмная тема), сняты computed-стилями
-                // из референсных файлов YouTrack Agile Board*.html
+                // Тёмная палитра интерфейса
                 yt: {
                     bg: '#1e1f22',           // content/navigation background
                     surface: '#232428',      // свимлейны, лёгкое выделение

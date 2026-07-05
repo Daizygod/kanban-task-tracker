@@ -22,7 +22,7 @@
         color: #e8eaed;
     }
 
-    /* Тонкие тёмные скроллбары как в YouTrack */
+    /* Тонкие тёмные скроллбары */
     * {
         scrollbar-width: thin;
         scrollbar-color: #43454a transparent;
@@ -56,7 +56,7 @@
     border-left-color: rgb(var(--accent)) !important;
 }
 
-/* Свечение сайдбара как в YouTrack, но акцентным цветом пользователя */
+/* Свечение сайдбара акцентным цветом пользователя */
 .sidebar-glow {
     background:
         radial-gradient(380px 330px at 16px 24px, rgb(var(--accent) / 0.5), transparent 70%),

@@ -5,7 +5,7 @@
      data-status-ids="{{ $statuses->pluck('id')->toJson() }}">
 
     <x-slot name="header">
-        {{-- Строка 1: хлебные крошки + поиск (как в YouTrack) --}}
+        {{-- Строка 1: хлебные крошки + поиск --}}
         <div class="flex h-12 items-center gap-1.5 px-4 text-sm">
             <a href="{{ route('projects.index') }}" class="text-yt-muted hover:text-yt-link">Доски</a>
             <span class="text-yt-muted">/</span>
@@ -88,7 +88,7 @@
                 $maxStatusCount = max(array_values($statusCounts) ?: [0]);
             @endphp
             <div class="flex items-end px-3 pt-2">
-                {{-- Мини-гистограмма: сколько карточек в каждом статусе (как sprint progress в YouTrack) --}}
+                {{-- Мини-гистограмма: сколько карточек в каждом статусе --}}
                 <div class="flex items-end gap-[3px]">
                     @foreach ($statuses as $status)
                         @php
@@ -150,7 +150,7 @@
                                     @endforeach
                                 </div>
 
-                                {{-- Свёрнутая колонка: квадратики-карточки как в YouTrack --}}
+                                {{-- Свёрнутая колонка: карточки цветными квадратиками --}}
                                 @php($cellCards = $row['cards'][$status->id] ?? collect())
                                 <div x-show="isColCollapsed({{ $status->id }})" x-cloak
                                      wire:key="mini-cell-{{ $tab }}-{{ $row['key'] }}-{{ $status->id }}"

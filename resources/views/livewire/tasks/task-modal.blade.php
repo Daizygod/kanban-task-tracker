@@ -7,7 +7,7 @@
                 <div class="flex flex-col md:flex-row">
                     {{-- Основная колонка --}}
                     <div class="min-w-0 flex-1 px-8 py-5">
-                        {{-- Шапка как в YouTrack: номер + кто создал/обновил --}}
+                        {{-- Шапка: номер + кто создал/обновил --}}
                         <div class="flex items-start gap-2 text-sm">
                             <span class="font-medium {{ $task->status->is_final ? 'text-yt-faint line-through' : 'text-yt-muted' }}">{{ $task->full_number }}</span>
                             <span class="yt-chip">{{ $task->type->label() }}</span>
@@ -178,7 +178,7 @@
                         </div>
                     </div>
 
-                    {{-- Правая панель полей — как в YouTrack: label сверху, значение ниже, бейдж справа --}}
+                    {{-- Правая панель полей: label сверху, значение ниже, бейдж справа --}}
                     <div class="w-full shrink-0 border-t border-yt-border-soft md:w-60 md:border-l md:border-t-0">
                         <div class="flex justify-end px-3 pt-3">
                             <button wire:click="close" class="rounded p-1 text-yt-muted hover:bg-yt-panel hover:text-yt-text">
