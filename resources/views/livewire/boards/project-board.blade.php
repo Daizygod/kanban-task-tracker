@@ -134,8 +134,10 @@
                     <div class="grid" style="grid-template-columns: {{ $gridTemplate }};" :style="gridStyle"
                          @if ($tab !== 'tasks') x-show="!isRowCollapsed('{{ $row['key'] }}')" @endif>
                         @foreach ($statuses as $status)
-                            <div class="px-1 py-2 {{ ! $loop->first ? 'border-l border-yt-board-border' : '' }}">
-                                {{-- Развёрнутая колонка: обычные карточки + dnd --}}
+                            <div class="flex flex-col px-1 py-2 {{ ! $loop->first ? 'border-l border-yt-board-border' : '' }}">
+                                {{-- Развёрнутая колонка: обычные карточки + dnd.
+                                     flex-1 растягивает drop-зону на всю высоту строки,
+                                     чтобы в короткую колонку можно было бросить карточку где угодно --}}
                                 <div x-data="kanbanColumn"
                                      x-show="!isColCollapsed({{ $status->id }})"
                                      data-status-id="{{ $status->id }}"
@@ -144,7 +146,7 @@
                                          data-parent-id="{{ $row['header']?->id }}"
                                      @endif
                                      wire:key="cell-{{ $tab }}-{{ $row['key'] }}-{{ $status->id }}"
-                                     class="min-h-[56px] space-y-1.5">
+                                     class="min-h-[56px] flex-1 space-y-1.5">
                                     @foreach ($row['cards'][$status->id] ?? [] as $card)
                                         <x-task-card :task="$card" wire:key="card-{{ $card->id }}" />
                                     @endforeach

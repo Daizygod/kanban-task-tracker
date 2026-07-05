@@ -63,9 +63,17 @@ document.addEventListener('livewire:init', () => {
                 // колонками (смена статуса), и между строками (смена родителя)
                 group: 'board',
                 animation: 150,
+                // Вместо нативного полупрозрачного снимка браузера за курсором
+                // следует клон карточки, который мы стилизуем сами (.kanban-dragging)
+                forceFallback: true,
+                fallbackOnBody: true,
+                fallbackTolerance: 4,
                 ghostClass: 'kanban-ghost',
                 dragClass: 'kanban-dragging',
+                onStart: () => document.body.classList.add('kanban-grabbing'),
                 onEnd: (evt) => {
+                    document.body.classList.remove('kanban-grabbing');
+
                     if (evt.to === evt.from) {
                         return;
                     }

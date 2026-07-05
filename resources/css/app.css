@@ -92,14 +92,38 @@
     to { background-position: 140% 0; }
 }
 
-@layer components {
-    .kanban-ghost {
-        @apply opacity-40;
-    }
+/* Drag&drop карточек. Классы упоминаются только в JS, поэтому живут вне
+   @layer — иначе Tailwind вычистит их из сборки как неиспользуемые. */
 
-    .kanban-dragging {
-        @apply rotate-1 shadow-modal;
-    }
+/* Плейсхолдер на месте будущего дропа: пунктирный слот акцентного цвета,
+   содержимое карточки скрыто */
+.kanban-ghost {
+    opacity: 1 !important;
+    border: 1px dashed rgb(var(--accent) / 0.55) !important;
+    background: rgb(var(--accent) / 0.05) !important;
+    box-shadow: none !important;
+}
+
+.kanban-ghost > * {
+    visibility: hidden;
+}
+
+/* Клон карточки, следующий за курсором (fallback-режим SortableJS).
+   SortableJS ставит inline opacity: 0.8 и transform — поэтому !important
+   и отдельное свойство rotate вместо transform */
+.kanban-dragging {
+    opacity: 1 !important;
+    rotate: 2deg;
+    border-color: rgb(var(--accent) / 0.7) !important;
+    filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55));
+}
+
+body.kanban-grabbing,
+body.kanban-grabbing * {
+    cursor: grabbing !important;
+}
+
+@layer components {
 
     .yt-input {
         @apply block w-full rounded border-yt-border bg-yt-surface text-sm text-yt-text
