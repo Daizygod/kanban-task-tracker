@@ -6,6 +6,7 @@ use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -48,6 +49,12 @@ class ProjectList extends Component
         'key.regex' => 'Ключ — ровно 3 латинские буквы, например BAC.',
         'key.unique' => 'Такой ключ уже занят другим проектом.',
     ];
+
+    #[On('project-create-open')]
+    public function openCreateModal(): void
+    {
+        $this->showCreateModal = true;
+    }
 
     public function updatedKey(string $value): void
     {
