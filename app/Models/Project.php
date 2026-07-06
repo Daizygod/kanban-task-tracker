@@ -36,6 +36,12 @@ class Project extends Model
                 ['name' => 'P1', 'color' => '#E5493A', 'order' => 4, 'is_default' => false],
             ]);
 
+            $project->workTypes()->createMany(
+                array_map(fn (array $type) => $type + ['is_standard' => true], WorkType::STANDARD)
+            );
+
+            $project->boards()->create(['name' => 'Все задачи', 'is_default' => true]);
+
             // Создатель автоматически становится участником
             $project->members()->syncWithoutDetaching([$project->owner_id]);
         });
@@ -71,6 +77,22 @@ class Project extends Model
     public function defaultPriority(): Priority
     {
         return $this->priorities()->where('is_default', true)->firstOrFail();
+    }
+
+    public function workTypes(): HasMany
+    {
+        return $this->hasMany(WorkType::class)->orderBy('order');
+    }
+
+    /** Доски проекта: дефолтная всегда первая */
+    public function boards(): HasMany
+    {
+        return $this->hasMany(Board::class)->orderByDesc('is_default')->orderBy('id');
+    }
+
+    public function defaultBoard(): Board
+    {
+        return $this->boards()->where('is_default', true)->firstOrFail();
     }
 
     public function tasks(): HasMany

@@ -71,7 +71,7 @@ class WeeklyTimesheet extends Component
 
         $days = collect(range(0, 6))->map(fn (int $offset) => $start->addDays($offset));
 
-        $logs = TimeLog::with(['task.project', 'task.status', 'task.priority'])
+        $logs = TimeLog::with(['task.project', 'task.status', 'task.priority', 'workType'])
             ->where('user_id', $viewedUser->id)
             ->whereBetween('logged_date', [$start->toDateString(), $start->addDays(6)->toDateString()])
             ->orderBy('id')

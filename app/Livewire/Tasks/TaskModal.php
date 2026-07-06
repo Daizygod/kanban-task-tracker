@@ -3,9 +3,11 @@
 namespace App\Livewire\Tasks;
 
 use App\Exceptions\StatusChangeBlockedException;
+use App\Livewire\Concerns\SearchesMentions;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TimeLog;
+use App\Models\UserNotification;
 use App\Services\Centrifugo;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +17,9 @@ use Livewire\Component;
 
 class TaskModal extends Component
 {
-    public Project $project;
+    use SearchesMentions;
+    /** Может отсутствовать (страница «Учёт времени») — тогда берётся из открываемой задачи */
+    public ?Project $project = null;
 
     public ?int $taskId = null;
 
@@ -40,6 +44,8 @@ class TaskModal extends Component
 
     public string $timeDescription = '';
 
+    public ?int $timeWorkTypeId = null;
+
     // Зависимости
     public string $depQuery = '';
 
@@ -51,13 +57,15 @@ class TaskModal extends Component
     #[On('open-task')]
     public function open(int $taskId): void
     {
-        $task = $this->project->tasks()->find($taskId);
+        $task = Task::with('project')->find($taskId);
 
-        if (! $task) {
+        if (! $task || ! $task->project->hasMember(Auth::user())) {
             return;
         }
 
-        $this->reset('commentBody', 'timeValue', 'timeDescription', 'depQuery', 'editingDescription');
+        $this->project = $task->project;
+
+        $this->reset('commentBody', 'timeValue', 'timeDescription', 'timeWorkTypeId', 'depQuery', 'editingDescription');
         $this->resetValidation();
 
         $this->taskId = $task->id;
@@ -77,7 +85,7 @@ class TaskModal extends Component
     private function task(): Task
     {
         return $this->project->tasks()
-            ->with(['status', 'priority', 'assignee', 'creator', 'parent', 'children.status', 'dependsOn.status', 'dependents.status'])
+            ->with(['status', 'priority', 'assignee', 'creator', 'parent', 'children.status', 'dependsOn.status', 'dependents.status', 'boards'])
             ->findOrFail($this->taskId);
     }
 
@@ -110,7 +118,14 @@ class TaskModal extends Component
 
     public function setAssignee(?int $userId): void
     {
-        $this->task()->update(['assignee_id' => $userId ?: null]);
+        $task = $this->task();
+        $userId = $userId ?: null;
+
+        if ($userId && $userId !== $task->assignee_id) {
+            UserNotification::send($userId, UserNotification::TYPE_ASSIGNED, $task);
+        }
+
+        $task->update(['assignee_id' => $userId]);
         $this->publish('task-updated');
         $this->dispatch('task-saved');
     }
@@ -148,7 +163,13 @@ class TaskModal extends Component
 
     public function saveDescription(): void
     {
-        $this->task()->update(['description' => trim($this->descriptionDraft) ?: null]);
+        $task = $this->task();
+        $description = trim($this->descriptionDraft) ?: null;
+
+        // Уведомляем только новых упомянутых — не спамим при каждом сохранении
+        UserNotification::sendMentions($description, $task, previousText: $task->description);
+
+        $task->update(['description' => $description]);
         $this->editingDescription = false;
     }
 
@@ -161,10 +182,15 @@ class TaskModal extends Component
             ['commentBody.required' => 'Комментарий не может быть пустым.'],
         );
 
-        $this->task()->comments()->create([
+        $task = $this->task();
+        $body = trim($this->commentBody);
+
+        $task->comments()->create([
             'user_id' => Auth::id(),
-            'body' => trim($this->commentBody),
+            'body' => $body,
         ]);
+
+        UserNotification::sendMentions($body, $task);
 
         $this->commentBody = '';
     }
@@ -177,8 +203,9 @@ class TaskModal extends Component
             'timeValue' => ['required', 'numeric', 'gt:0', 'max:10000'],
             'timeUnit' => ['required', Rule::in(['hours', 'minutes'])],
             'timeDate' => ['required', 'date'],
+            'timeWorkTypeId' => ['required', Rule::exists('work_types', 'id')->where('project_id', $this->project->id)],
             'timeDescription' => ['nullable', 'string', 'max:1000'],
-        ], attributes: ['timeValue' => 'время', 'timeDate' => 'дата']);
+        ], messages: ['timeWorkTypeId.required' => 'Выберите тип работы.'], attributes: ['timeValue' => 'время', 'timeDate' => 'дата', 'timeWorkTypeId' => 'тип работы']);
 
         $minutes = (int) round(
             $this->timeUnit === 'hours' ? ((float) $this->timeValue) * 60 : (float) $this->timeValue
@@ -192,6 +219,7 @@ class TaskModal extends Component
 
         $this->task()->timeLogs()->create([
             'user_id' => Auth::id(),
+            'work_type_id' => $this->timeWorkTypeId,
             'minutes' => $minutes,
             'description' => trim($this->timeDescription) ?: null,
             'logged_date' => $this->timeDate,
@@ -243,6 +271,17 @@ class TaskModal extends Component
         $this->dispatch('task-saved');
     }
 
+    // ---------------------------------------------------- Видимость на досках
+
+    public function toggleBoard(int $boardId): void
+    {
+        $board = $this->project->boards()->where('is_default', false)->findOrFail($boardId);
+
+        $this->task()->boards()->toggle($board->id);
+        $this->publish('task-updated');
+        $this->dispatch('task-saved');
+    }
+
     // ----------------------------------------------------------------- Render
 
     /** Комментарии и смены статусов одной хронологической лентой */
@@ -274,7 +313,7 @@ class TaskModal extends Component
         if ($this->show && $this->taskId) {
             $task = $this->task();
             $feed = $this->buildFeed($task);
-            $timeLogs = $task->timeLogs()->with('user')->orderByDesc('logged_date')->orderByDesc('id')->get();
+            $timeLogs = $task->timeLogs()->with(['user', 'workType'])->orderByDesc('logged_date')->orderByDesc('id')->get();
 
             if (mb_strlen(trim($this->depQuery)) >= 1) {
                 $query = trim($this->depQuery);
@@ -297,9 +336,11 @@ class TaskModal extends Component
             'feed' => $feed,
             'timeLogs' => $timeLogs,
             'depOptions' => $depOptions,
-            'statuses' => $this->project->statuses,
-            'members' => $this->project->members()->orderBy('name')->get(),
-            'priorities' => $this->project->priorities,
+            'statuses' => $this->project?->statuses ?? collect(),
+            'members' => $this->project?->members()->orderBy('name')->get() ?? collect(),
+            'priorities' => $this->project?->priorities ?? collect(),
+            'workTypes' => $this->project?->workTypes ?? collect(),
+            'customBoards' => $this->project?->boards()->where('is_default', false)->get() ?? collect(),
             'totalMinutes' => $timeLogs->sum('minutes'),
         ]);
     }

@@ -29,14 +29,14 @@
 
                         {{-- Описание --}}
                         @if ($editingDescription)
-                            <textarea wire:model="descriptionDraft" rows="6" class="yt-input" autofocus></textarea>
+                            <x-mention-textarea model="descriptionDraft" rows="6" placeholder="Опишите задачу… @ — упомянуть" />
                             <div class="mt-2 flex gap-2">
                                 <button wire:click="saveDescription" class="yt-btn-primary">Сохранить</button>
                                 <button wire:click="$set('editingDescription', false)" class="yt-btn-secondary">Отмена</button>
                             </div>
                         @else
                             <div wire:click="$set('editingDescription', true)"
-                                 class="-mx-2 min-h-[36px] cursor-text whitespace-pre-wrap rounded px-2 py-1 text-sm leading-relaxed {{ $task->description ? 'text-yt-text' : 'text-yt-faint' }} hover:bg-yt-panel/40">{{ $task->description ?: 'Добавить описание…' }}</div>
+                                 class="-mx-2 min-h-[36px] cursor-text whitespace-pre-wrap rounded px-2 py-1 text-sm leading-relaxed {{ $task->description ? 'text-yt-text' : 'text-yt-faint' }} hover:bg-yt-panel/40">{!! $task->description ? App\Support\RichText::render($task->description, $project) : 'Добавить описание…' !!}</div>
                         @endif
 
                         {{-- Связи: зависит от / блокирует / подзадачи --}}
@@ -89,10 +89,17 @@
                                     <option value="hours">часов</option>
                                     <option value="minutes">минут</option>
                                 </select>
+                                <select wire:model="timeWorkTypeId" class="yt-input w-40 {{ $errors->has('timeWorkTypeId') ? '!border-yt-danger' : '' }}">
+                                    <option value="">Тип работы…</option>
+                                    @foreach ($workTypes as $workType)
+                                        <option value="{{ $workType->id }}">{{ $workType->name }}</option>
+                                    @endforeach
+                                </select>
                                 <input type="date" wire:model="timeDate" class="yt-input w-36">
                                 <input type="text" wire:model="timeDescription" placeholder="Что делали? (необязательно)" class="yt-input min-w-32 flex-1">
                                 <button type="submit" class="yt-btn-secondary shrink-0">Записать</button>
                                 @error('timeValue') <p class="w-full text-xs text-yt-danger">{{ $message }}</p> @enderror
+                                @error('timeWorkTypeId') <p class="w-full text-xs text-yt-danger">{{ $message }}</p> @enderror
                                 @error('timeDate') <p class="w-full text-xs text-yt-danger">{{ $message }}</p> @enderror
                             </form>
 
@@ -102,6 +109,8 @@
                                         <li class="group flex items-center gap-3 rounded px-1 py-1 text-sm hover:bg-yt-panel/40" wire:key="tl-{{ $timeLog->id }}">
                                             <span class="w-16 shrink-0 text-yt-link">{{ $timeLog->formatted_duration }}</span>
                                             <span class="w-20 shrink-0 text-xs text-yt-faint">{{ $timeLog->logged_date->format('d.m.Y') }}</span>
+                                            <span class="shrink-0 rounded-full px-2 py-px text-[11px] font-medium"
+                                                  style="background: {{ $timeLog->workType->color }}26; color: {{ $timeLog->workType->color }}">{{ $timeLog->workType->name }}</span>
                                             <span class="shrink-0 text-xs text-yt-muted">{{ $timeLog->user->name }}</span>
                                             <span class="min-w-0 flex-1 truncate text-yt-muted">{{ $timeLog->description }}</span>
                                             @if ($timeLog->user_id === auth()->id())
@@ -140,7 +149,7 @@
                                                     <span class="h-1 w-1 rounded-full bg-yt-faint"></span>
                                                     <span class="text-[13px] text-yt-muted">Прокомментировал(а) {{ $entry['at']->diffForHumans() }}</span>
                                                 </div>
-                                                <div class="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-yt-text">{{ $entry['item']->body }}</div>
+                                                <div class="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-yt-text">{!! App\Support\RichText::render($entry['item']->body, $project) !!}</div>
                                             </div>
                                         </li>
                                     @else
@@ -168,7 +177,7 @@
                             <form wire:submit="addComment" class="mt-4 flex gap-2.5">
                                 <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yt-accent text-[10px] font-semibold text-white">{{ auth()->user()->initials() }}</span>
                                 <div class="flex-1">
-                                    <textarea wire:model="commentBody" rows="2" class="yt-input" placeholder="Написать комментарий…"></textarea>
+                                    <x-mention-textarea model="commentBody" rows="2" placeholder="Написать комментарий… @ — упомянуть человека или задачу" />
                                     @error('commentBody') <p class="mt-1 text-xs text-yt-danger">{{ $message }}</p> @enderror
                                     <div class="mt-2 flex justify-end">
                                         <button type="submit" class="yt-btn-primary" wire:loading.attr="disabled">Отправить</button>
@@ -205,7 +214,7 @@
                                     </select>
                                 </div>
                                 <span class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"
-                                      style="background: {{ $task->priority->color }}">{{ mb_substr($task->priority->name, 0, 1) }}</span>
+                                      style="background: {{ $task->priority->color }}; box-shadow: 0 0 8px {{ $task->priority->color }}99">{{ mb_substr($task->priority->name, 0, 1) }}</span>
                             </div>
 
                             <div class="flex items-start justify-between gap-2">
@@ -250,6 +259,26 @@
                                     @endif
                                 </div>
                             </div>
+
+                            @if ($customBoards->isNotEmpty())
+                                <div>
+                                    <div class="text-xs leading-5 text-yt-muted">Видимость на досках</div>
+                                    <div class="mt-1 space-y-1">
+                                        <label class="flex items-center gap-2 text-sm text-yt-faint" title="Дефолтная доска показывает все задачи">
+                                            <input type="checkbox" checked disabled class="rounded border-yt-border bg-yt-surface text-yt-accent opacity-50">
+                                            <span class="truncate">{{ $project->boards->firstWhere('is_default', true)?->name ?? 'Все задачи' }}</span>
+                                        </label>
+                                        @foreach ($customBoards as $board)
+                                            <label class="flex cursor-pointer items-center gap-2 text-sm text-yt-text" wire:key="board-visibility-{{ $board->id }}">
+                                                <input type="checkbox" @checked($task->boards->contains($board->id))
+                                                       wire:change="toggleBoard({{ $board->id }})"
+                                                       class="rounded border-yt-border bg-yt-surface text-yt-accent focus:ring-yt-accent">
+                                                <span class="truncate">{{ $board->name }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
 
                             <div>
                                 <div class="text-xs leading-5 text-yt-muted">Добавить зависимость</div>

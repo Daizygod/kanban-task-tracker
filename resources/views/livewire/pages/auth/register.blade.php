@@ -11,6 +11,7 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.guest')] class extends Component
 {
     public string $name = '';
+    public string $username = '';
     public string $email = '';
     public string $password = '';
     public string $password_confirmation = '';
@@ -20,11 +21,19 @@ new #[Layout('layouts.guest')] class extends Component
      */
     public function register(): void
     {
-        $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-        ]);
+        $validated = $this->validate(
+            [
+                'name' => ['required', 'string', 'max:255'],
+                'username' => ['required', 'string', 'lowercase', 'min:3', 'max:30', 'regex:/^'.App\Support\Mentions::USERNAME_PATTERN.'$/', 'unique:'.User::class],
+                'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+                'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+            ],
+            messages: [
+                'username.regex' => 'Логин: строчные латинские буквы, цифры, «_», внутри допустимы «.» и «-».',
+                'username.unique' => 'Этот логин уже занят.',
+            ],
+            attributes: ['username' => 'логин'],
+        );
 
         $validated['password'] = Hash::make($validated['password']);
 
@@ -45,10 +54,18 @@ new #[Layout('layouts.guest')] class extends Component
             <x-input-error :messages="$errors->get('name')" class="mt-2" />
         </div>
 
+        <!-- Логин: уникальный, для @-упоминаний -->
+        <div class="mt-4">
+            <x-input-label for="username" value="Логин" />
+            <x-text-input wire:model="username" id="username" class="block mt-1 w-full" type="text" name="username" required autocomplete="username" placeholder="ivan.petrov" />
+            <p class="mt-1 text-xs text-yt-faint">Уникальное имя для упоминаний через @ в комментариях и задачах.</p>
+            <x-input-error :messages="$errors->get('username')" class="mt-2" />
+        </div>
+
         <!-- Email Address -->
         <div class="mt-4">
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autocomplete="username" />
+            <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autocomplete="email" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 

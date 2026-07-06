@@ -70,18 +70,23 @@
 
                         <div class="flex-1 space-y-2 p-2">
                             @foreach ($logs[$dayKey] ?? [] as $log)
-                                <a href="{{ route('projects.board', [$log->task->project, 'tasks']) }}" wire:key="log-{{ $log->id }}"
-                                   class="block rounded border border-yt-border bg-yt-card p-2.5 shadow-card transition-colors hover:border-yt-border-strong"
-                                   style="box-shadow: inset 0 -3px 0 {{ $log->task->priority->color }}, 0 0 3px 0 rgba(0,0,0,.1)">
-                                    <div class="flex items-baseline gap-2 text-sm">
-                                        <span class="text-yt-link">{{ $log->task->full_number }}</span>
-                                        <span class="ml-auto font-medium text-yt-text">{{ $log->formatted_duration }}</span>
+                                <div wire:key="log-{{ $log->id }}"
+                                     class="rounded border border-yt-border bg-yt-card p-2.5 shadow-card transition-colors hover:border-yt-border-strong"
+                                     style="box-shadow: inset 0 -3px 0 {{ $log->task->priority->color }}, inset 0 -11px 14px -9px {{ $log->task->priority->color }}B3, 0 2px 8px -2px {{ $log->task->priority->color }}59, 0 0 3px 0 rgba(0,0,0,.1)">
+                                    <div class="flex items-center gap-2 text-sm">
+                                        <button wire:click="$dispatch('open-task', { taskId: {{ $log->task_id }} })"
+                                                class="shrink-0 text-yt-link hover:underline"
+                                                title="{{ $log->task->title }}">{{ $log->task->full_number }}</button>
+                                        <span class="ml-auto shrink-0 font-medium text-yt-text">{{ $log->formatted_duration }}</span>
                                     </div>
-                                    <div class="mt-1 line-clamp-2 text-sm text-yt-text">{{ $log->task->title }}</div>
+                                    <div class="mt-1.5">
+                                        <span class="rounded-full px-2 py-px text-[11px] font-medium"
+                                              style="background: {{ $log->workType->color }}26; color: {{ $log->workType->color }}">{{ $log->workType->name }}</span>
+                                    </div>
                                     @if ($log->description)
-                                        <div class="mt-1 line-clamp-2 text-xs text-yt-muted">{{ $log->description }}</div>
+                                        <div class="mt-1.5 line-clamp-2 text-xs text-yt-muted">{{ $log->description }}</div>
                                     @endif
-                                </a>
+                                </div>
                             @endforeach
                         </div>
                     </div>
@@ -89,4 +94,6 @@
             </div>
         </div>
     </div>
+
+    {{-- Модалка просмотра задачи живёт в layouts.app --}}
 </div>

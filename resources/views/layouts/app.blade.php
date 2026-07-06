@@ -56,11 +56,12 @@
 
                 @auth
                     <div class="border-t border-yt-border-soft p-3" x-data="{ open: false }">
-                        <button @click="open = !open" class="flex w-full items-center gap-2 rounded px-1 py-1 text-left hover:bg-yt-hover">
+                        <livewire:notifications.notification-bell />
+                        <button @click="open = !open" class="mt-1 flex w-full items-center gap-2 rounded px-1 py-1 text-left hover:bg-yt-hover">
                             <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-yt-accent/80 text-xs font-semibold text-white">{{ auth()->user()->initials() }}</span>
                             <span class="min-w-0">
                                 <span class="block truncate text-sm">{{ auth()->user()->name }}</span>
-                                <span class="block truncate text-xs text-yt-faint">{{ auth()->user()->email }}</span>
+                                <span class="block truncate text-xs text-yt-faint">{{ '@'.auth()->user()->username }}</span>
                             </span>
                         </button>
                         <div x-show="open" class="mt-2 space-y-0.5" style="display: none;">
@@ -87,6 +88,12 @@
                 </main>
             </div>
         </div>
+
+        {{-- Модалка задачи доступна на любой странице: открывается по событию
+             open-task (доска, «Моё время», уведомления, упоминания) --}}
+        @auth
+            <livewire:tasks.task-modal />
+        @endauth
 
         {{-- Тосты --}}
         <div x-data="{

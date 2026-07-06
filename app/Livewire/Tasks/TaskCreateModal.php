@@ -3,8 +3,10 @@
 namespace App\Livewire\Tasks;
 
 use App\Enums\TaskType;
+use App\Livewire\Concerns\SearchesMentions;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\UserNotification;
 use App\Services\Centrifugo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -14,6 +16,7 @@ use Livewire\Component;
 
 class TaskCreateModal extends Component
 {
+    use SearchesMentions;
     public Project $project;
 
     public bool $show = false;
@@ -88,6 +91,12 @@ class TaskCreateModal extends Component
         }
 
         $task->save();
+
+        if ($task->assignee_id) {
+            UserNotification::send($task->assignee_id, UserNotification::TYPE_ASSIGNED, $task);
+        }
+
+        UserNotification::sendMentions($task->description, $task);
 
         app(Centrifugo::class)->publish(Centrifugo::boardChannel($this->project->id), [
             'event' => 'task-created',

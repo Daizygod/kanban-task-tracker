@@ -43,7 +43,7 @@
 
                     <div>
                         <label class="mb-1 block text-xs font-medium text-yt-muted">Описание</label>
-                        <textarea wire:model="description" rows="4" class="yt-input" placeholder="Необязательно"></textarea>
+                        <x-mention-textarea model="description" rows="4" placeholder="Необязательно. @ — упомянуть человека или задачу" />
                     </div>
 
                     <div class="grid grid-cols-3 gap-3">

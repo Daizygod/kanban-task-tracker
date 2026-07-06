@@ -157,4 +157,9 @@ body.kanban-grabbing * {
         @apply w-full cursor-pointer rounded border-0 bg-transparent p-0 text-sm text-yt-text
             hover:text-yt-link focus:ring-0;
     }
+
+    /* @-упоминание пользователя в комментарии/описании (рендерится из RichText) */
+    .yt-mention {
+        @apply rounded bg-yt-accent/15 px-1 py-px font-medium text-yt-accent-hover;
+    }
 }

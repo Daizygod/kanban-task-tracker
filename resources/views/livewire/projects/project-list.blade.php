@@ -12,9 +12,13 @@
     <div class="p-6">
         @if ($projects->isEmpty())
             <div class="mx-auto mt-16 max-w-md text-center">
-                <p class="text-lg font-medium">Пока нет ни одного проекта</p>
+                <div class="text-8xl">😢</div>
+                <p class="mt-6 text-lg font-medium">Нет проектов</p>
                 <p class="mt-2 text-sm text-yt-muted">Создайте первый проект — статусы «Открыта», «В работе» и «Завершена» появятся автоматически, потом их можно настроить.</p>
-                <button wire:click="$set('showCreateModal', true)" class="yt-btn-primary mt-6">Создать проект</button>
+                <button wire:click="$set('showCreateModal', true)" class="yt-btn-primary mt-6">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    Создать проект
+                </button>
             </div>
         @else
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -26,6 +26,7 @@ class Task extends Model
         'title',
         'description',
         'priority_id',
+        'board_order',
         'created_by',
         'assignee_id',
         'due_date',
@@ -52,6 +53,23 @@ class Task extends Model
 
                     return $number;
                 });
+            }
+
+            // Номер монотонно растёт в рамках проекта, поэтому новая карточка
+            // встаёт в конец своей ячейки на доске
+            if (! $task->board_order) {
+                $task->board_order = $task->number;
+            }
+        });
+
+        // Новая задача видна на всех пользовательских досках проекта
+        static::created(function (Task $task) {
+            $boardIds = Board::where('project_id', $task->project_id)
+                ->where('is_default', false)
+                ->pluck('id');
+
+            if ($boardIds->isNotEmpty()) {
+                $task->boards()->attach($boardIds);
             }
         });
     }
@@ -125,6 +143,12 @@ class Task extends Model
     public function timeLogs(): HasMany
     {
         return $this->hasMany(TimeLog::class);
+    }
+
+    /** Пользовательские доски, на которых задача видима */
+    public function boards(): BelongsToMany
+    {
+        return $this->belongsToMany(Board::class)->withTimestamps();
     }
 
     /**

@@ -74,7 +74,25 @@ document.addEventListener('livewire:init', () => {
                 onEnd: (evt) => {
                     document.body.classList.remove('kanban-grabbing');
 
+                    const onFail = () => {
+                        window.dispatchEvent(new CustomEvent('toast', {
+                            detail: { message: 'Не удалось сохранить перемещение — доска обновлена.', type: 'error' },
+                        }));
+                        this.$wire.$refresh();
+                    };
+
+                    // Итоговый вертикальный порядок целевой ячейки — сервер
+                    // сохранит его в board_order
+                    const orderedIds = Array.from(evt.to.children)
+                        .filter((el) => el.dataset.taskId)
+                        .map((el) => Number(el.dataset.taskId));
+
                     if (evt.to === evt.from) {
+                        // Перестановка внутри ячейки: меняется только порядок
+                        if (evt.oldIndex !== evt.newIndex) {
+                            this.$wire.reorderCell(orderedIds).catch(onFail);
+                        }
+
                         return;
                     }
 
@@ -90,19 +108,88 @@ document.addEventListener('livewire:init', () => {
                     // подтвердит позицию, либо вернёт карточку назад (при ошибке
                     // придёт тост и старая раскладка). Если сам запрос упал —
                     // принудительно перечитываем доску, чтобы не разъехаться.
-                    this.$wire.moveCard(taskId, toStatusId, parentId, applyParent)
-                        .catch(() => {
-                            window.dispatchEvent(new CustomEvent('toast', {
-                                detail: { message: 'Не удалось сохранить перемещение — доска обновлена.', type: 'error' },
-                            }));
-                            this.$wire.$refresh();
-                        });
+                    this.$wire.moveCard(taskId, toStatusId, parentId, applyParent, orderedIds)
+                        .catch(onFail);
                 },
             });
         },
 
         destroy() {
             this.sortable?.destroy();
+        },
+    }));
+
+    // -----------------------------------------------------------------------
+    // @-упоминания: автокомплит юзеров и задач в textarea.
+    // Оборачивающий див содержит textarea (x-ref="area") и дропдаун;
+    // подсказки запрашиваются у Livewire-компонента ($wire.searchMentions)
+    // -----------------------------------------------------------------------
+    window.Alpine.data('mentionBox', () => ({
+        open: false,
+        items: [],
+        active: 0,
+        matchStart: 0,
+        matchEnd: 0,
+
+        async onInput() {
+            const el = this.$refs.area;
+            const upToCaret = el.value.slice(0, el.selectionStart);
+            // «@» и часть логина/номера сразу перед кареткой
+            const match = upToCaret.match(/@([\w.\-]*)$/);
+
+            if (!match) {
+                this.open = false;
+
+                return;
+            }
+
+            this.matchStart = el.selectionStart - match[0].length;
+            this.matchEnd = el.selectionStart;
+
+            try {
+                this.items = await this.$wire.searchMentions(match[1]);
+            } catch {
+                this.items = [];
+            }
+
+            this.active = 0;
+            this.open = this.items.length > 0;
+        },
+
+        pick(item) {
+            const el = this.$refs.area;
+            // Юзер вставляется как @логин, задача — как номер (KEY-123)
+            const insert = item.kind === 'user' ? `@${item.value}` : item.value;
+
+            el.value = el.value.slice(0, this.matchStart) + insert + ' ' + el.value.slice(this.matchEnd);
+
+            const caret = this.matchStart + insert.length + 1;
+            el.setSelectionRange(caret, caret);
+            // Синхронизирует wire:model с новым значением
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.focus();
+            this.open = false;
+        },
+
+        onKeydown(event) {
+            if (!this.open) {
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                this.active = (this.active + 1) % this.items.length;
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                this.active = (this.active - 1 + this.items.length) % this.items.length;
+            } else if (event.key === 'Enter' || event.key === 'Tab') {
+                event.preventDefault();
+                this.pick(this.items[this.active]);
+            } else if (event.key === 'Escape') {
+                // Дропдаун закрывается, модалка остаётся открытой
+                event.stopPropagation();
+                this.open = false;
+            }
         },
     }));
 

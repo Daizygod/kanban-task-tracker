@@ -14,6 +14,7 @@ class TimeLog extends Model
     protected $fillable = [
         'task_id',
         'user_id',
+        'work_type_id',
         'minutes',
         'description',
         'logged_date',
@@ -49,5 +50,10 @@ class TimeLog extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function workType(): BelongsTo
+    {
+        return $this->belongsTo(WorkType::class);
     }
 }

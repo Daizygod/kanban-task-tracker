@@ -9,6 +9,7 @@ export default {
         './resources/views/**/*.blade.php',
         './app/Livewire/**/*.php',
         './app/Enums/**/*.php',
+        './app/Support/**/*.php',
     ],
 
     darkMode: 'class',

@@ -24,8 +24,22 @@
 
         {{-- Строка 2: тулбар доски --}}
         <div class="flex h-11 items-center gap-0.5 px-4">
+            {{-- Выбор доски: дефолтная показывает все задачи, свои — только включённые --}}
+            <select x-data x-on:change="Livewire.dispatch('board-select', { boardId: Number($event.target.value) })"
+                    class="mr-2 h-8 w-44 rounded border-yt-border bg-transparent px-2 text-sm text-yt-text focus:border-yt-accent focus:ring-1 focus:ring-yt-accent"
+                    title="Доска">
+                @foreach ($boards as $board)
+                    <option value="{{ $board->id }}" @selected($board->id === $currentBoard->id)>{{ $board->name }}</option>
+                @endforeach
+            </select>
+
+            @php
+                // «?board=» внутри инлайнового @php(...) ломает компиляцию Blade,
+                // поэтому блочная форма
+                $boardQuery = $currentBoard->is_default ? '' : '?board='.$currentBoard->id;
+            @endphp
             @foreach (['epics' => 'Эпики', 'stories' => 'Истории', 'tasks' => 'Задачи'] as $tabKey => $tabLabel)
-                <a href="{{ route('projects.board', [$project, $tabKey]) }}" wire:navigate
+                <a href="{{ route('projects.board', [$project, $tabKey]).$boardQuery }}" wire:navigate
                    class="rounded px-3 py-1 text-sm {{ $tab === $tabKey ? 'bg-[rgba(81,95,104,0.5)] text-yt-text' : 'text-yt-muted hover:bg-[rgba(81,95,104,0.3)] hover:text-yt-text' }}">
                     {{ $tabLabel }}
                 </a>
@@ -134,7 +148,7 @@
                     <div class="grid" style="grid-template-columns: {{ $gridTemplate }};" :style="gridStyle"
                          @if ($tab !== 'tasks') x-show="!isRowCollapsed('{{ $row['key'] }}')" @endif>
                         @foreach ($statuses as $status)
-                            <div class="flex flex-col px-1 py-2 {{ ! $loop->first ? 'border-l border-yt-board-border' : '' }}">
+                            <div class="group/cell flex flex-col px-1 py-2 {{ ! $loop->first ? 'border-l border-yt-board-border' : '' }}">
                                 {{-- Развёрнутая колонка: обычные карточки + dnd.
                                      flex-1 растягивает drop-зону на всю высоту строки,
                                      чтобы в короткую колонку можно было бросить карточку где угодно --}}
@@ -152,6 +166,30 @@
                                     @endforeach
                                 </div>
 
+                                {{-- Быстрое создание карточки в этой ячейке: статус из колонки,
+                                     родитель из строки. Живёт вне dnd-списка, чтобы не таскался --}}
+                                @php($quickParentId = $tab !== 'tasks' ? ($row['header']?->id ?? 'null') : 'null')
+                                <div x-show="!isColCollapsed({{ $status->id }})"
+                                     x-data="{ adding: false, title: '' }"
+                                     wire:key="quick-{{ $tab }}-{{ $row['key'] }}-{{ $status->id }}"
+                                     class="mt-1.5">
+                                    {{-- Плюсик виден всегда, подпись появляется при наведении на ячейку --}}
+                                    <button x-show="!adding" x-on:click="adding = true; $nextTick(() => $refs.quickInput.focus())"
+                                            class="flex w-full items-center gap-1.5 rounded px-2 py-1 text-xs text-yt-faint hover:bg-yt-hover hover:text-yt-text"
+                                            title="{{ $quickCardLabel }} в «{{ $status->name }}»">
+                                        <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                        <span class="hidden group-hover/cell:inline">{{ $quickCardLabel }}</span>
+                                    </button>
+                                    <div x-show="adding" x-cloak>
+                                        <input type="text" x-ref="quickInput" x-model="title"
+                                               placeholder="Название, Enter — создать"
+                                               class="yt-input px-2 py-1.5"
+                                               x-on:keydown.enter.prevent="if (title.trim()) { $wire.quickCreate({{ $status->id }}, {{ $quickParentId }}, title); title = ''; adding = false }"
+                                               x-on:keydown.escape.stop="adding = false; title = ''"
+                                               x-on:blur="if (!title.trim()) { adding = false }">
+                                    </div>
+                                </div>
+
                                 {{-- Свёрнутая колонка: карточки цветными квадратиками --}}
                                 @php($cellCards = $row['cards'][$status->id] ?? collect())
                                 <div x-show="isColCollapsed({{ $status->id }})" x-cloak
@@ -159,7 +197,7 @@
                                      class="flex flex-wrap content-start gap-1 px-1 py-1">
                                     @foreach ($cellCards->take(24) as $mini)
                                         <span class="h-2.5 w-2.5 cursor-pointer rounded-[2px] transition-opacity hover:opacity-70"
-                                              style="background: {{ $mini->priority->color }}"
+                                              style="background: {{ $mini->priority->color }}; box-shadow: 0 0 6px {{ $mini->priority->color }}B3"
                                               title="{{ $mini->full_number }} {{ $mini->title }}"
                                               wire:click="openTask({{ $mini->id }})"
                                               wire:key="mini-{{ $mini->id }}"></span>
@@ -176,6 +214,6 @@
         </div>
     </div>
 
-    <livewire:tasks.task-modal :project="$project" />
+    {{-- Модалка просмотра задачи живёт в layouts.app --}}
     <livewire:tasks.task-create-modal :project="$project" />
 </div>

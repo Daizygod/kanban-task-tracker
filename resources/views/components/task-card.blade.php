@@ -6,19 +6,20 @@
     $hasOpenBlockers = $task->dependsOn->contains(fn ($dep) => ! $dep->status->is_final);
 @endphp
 
-{{-- Карточка доски: рамка #43454a, полоска приоритета 4px внутри рамки --}}
+{{-- Карточка доски: рамка #43454a, полоска приоритета 4px внутри рамки
+     + мягкое неоновое свечение полоски (hex-альфа B3 ≈ 70%, 59 ≈ 35%) --}}
 <div {{ $attributes }}
      data-task-id="{{ $task->id }}"
      wire:click="openTask({{ $task->id }})"
      class="cursor-pointer rounded border border-yt-border bg-yt-card py-2 pl-3 pr-2 shadow-card transition-[border-color] hover:border-yt-border-strong"
-     style="box-shadow: inset 4px 0 0 {{ $task->priority->color }}, 0 0 3px 0 rgba(0,0,0,.1)">
+     style="box-shadow: inset 4px 0 0 {{ $task->priority->color }}, inset 13px 0 16px -10px {{ $task->priority->color }}B3, -2px 0 8px -2px {{ $task->priority->color }}59, 0 0 3px 0 rgba(0,0,0,.1)">
     <div class="mb-2 text-sm leading-5">
         <span class="mr-1.5 whitespace-nowrap text-yt-muted {{ $isDone ? 'line-through' : '' }}">{{ $task->full_number }}</span><span class="{{ $isDone ? 'text-yt-muted' : 'text-yt-text' }}">{{ $task->title }}</span>
     </div>
 
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-yt-muted">
         <span class="inline-flex items-center gap-1.5" title="Приоритет">
-            <span class="h-[7px] w-[7px] rounded-full" style="background: {{ $task->priority->color }}"></span>
+            <span class="h-[7px] w-[7px] rounded-full" style="background: {{ $task->priority->color }}; box-shadow: 0 0 6px 1px {{ $task->priority->color }}B3"></span>
             {{ $task->priority->name }}
         </span>
 

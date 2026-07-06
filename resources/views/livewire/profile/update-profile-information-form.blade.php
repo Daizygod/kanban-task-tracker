@@ -9,6 +9,7 @@ use Livewire\Volt\Component;
 new class extends Component
 {
     public string $name = '';
+    public string $username = '';
     public string $email = '';
 
     /**
@@ -17,6 +18,7 @@ new class extends Component
     public function mount(): void
     {
         $this->name = Auth::user()->name;
+        $this->username = (string) Auth::user()->username;
         $this->email = Auth::user()->email;
     }
 
@@ -27,10 +29,18 @@ new class extends Component
     {
         $user = Auth::user();
 
-        $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
-        ]);
+        $validated = $this->validate(
+            [
+                'name' => ['required', 'string', 'max:255'],
+                'username' => ['required', 'string', 'lowercase', 'min:3', 'max:30', 'regex:/^'.App\Support\Mentions::USERNAME_PATTERN.'$/', Rule::unique(User::class)->ignore($user->id)],
+                'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
+            ],
+            messages: [
+                'username.regex' => 'Логин: строчные латинские буквы, цифры, «_», внутри допустимы «.» и «-».',
+                'username.unique' => 'Этот логин уже занят.',
+            ],
+            attributes: ['username' => 'логин'],
+        );
 
         $user->fill($validated);
 
@@ -81,8 +91,15 @@ new class extends Component
         </div>
 
         <div>
+            <x-input-label for="username" value="Логин" />
+            <x-text-input wire:model="username" id="username" name="username" type="text" class="mt-1 block w-full" required autocomplete="username" />
+            <p class="mt-1 text-xs text-yt-faint">Уникальное имя для упоминаний через @ в комментариях и задачах.</p>
+            <x-input-error class="mt-2" :messages="$errors->get('username')" />
+        </div>
+
+        <div>
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" name="email" type="email" class="mt-1 block w-full" required autocomplete="username" />
+            <x-text-input wire:model="email" id="email" name="email" type="email" class="mt-1 block w-full" required autocomplete="email" />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
             @if (auth()->user() instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! auth()->user()->hasVerifiedEmail())

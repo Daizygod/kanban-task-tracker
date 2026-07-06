@@ -10,6 +10,8 @@ use App\Models\Status;
 use App\Models\Task;
 use App\Models\TimeLog;
 use App\Models\User;
+use App\Models\UserNotification;
+use App\Models\WorkType;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
@@ -17,12 +19,12 @@ use Illuminate\Support\Collection;
 
 class DatabaseSeeder extends Seeder
 {
-    /** @var array<string, string> email => имя */
+    /** @var array<string, array{string, string}> email => [имя, логин] */
     private const USERS = [
-        'anna@example.com' => 'Анна Смирнова',
-        'boris@example.com' => 'Борис Кузнецов',
-        'viktor@example.com' => 'Виктор Орлов',
-        'galina@example.com' => 'Галина Ветрова',
+        'anna@example.com' => ['Анна Смирнова', 'anna'],
+        'boris@example.com' => ['Борис Кузнецов', 'boris'],
+        'viktor@example.com' => ['Виктор Орлов', 'viktor'],
+        'galina@example.com' => ['Галина Ветрова', 'galina'],
     ];
 
     public const PASSWORD = 'password';
@@ -30,8 +32,9 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $users = collect(self::USERS)
-            ->map(fn (string $name, string $email) => User::factory()->create([
-                'name' => $name,
+            ->map(fn (array $user, string $email) => User::factory()->create([
+                'name' => $user[0],
+                'username' => $user[1],
                 'email' => $email,
                 'password' => self::PASSWORD,
             ]))
@@ -69,9 +72,36 @@ class DatabaseSeeder extends Seeder
         $this->seedProjectTasks($portal->fresh());
         $this->seedProjectTasks($mobile->fresh());
 
+        $this->seedNotifications($users);
+
         $this->command?->info('Демо-пользователи (пароль у всех: «'.self::PASSWORD.'»):');
-        foreach (self::USERS as $email => $name) {
-            $this->command?->line("  {$email} — {$name}");
+        foreach (self::USERS as $email => [$name, $username]) {
+            $this->command?->line("  {$email} — {$name} (@{$username})");
+        }
+    }
+
+    /** Пара демо-уведомлений каждому: упоминание и назначение, часть непрочитанных */
+    private function seedNotifications(Collection $users): void
+    {
+        foreach ($users as $user) {
+            $tasks = Task::whereHas('project.members', fn ($q) => $q->whereKey($user->id))
+                ->inRandomOrder()
+                ->limit(3)
+                ->get();
+
+            foreach ($tasks as $index => $task) {
+                $actor = $task->project->members->where('id', '!=', $user->id)->random();
+
+                UserNotification::create([
+                    'user_id' => $user->id,
+                    'actor_id' => $actor->id,
+                    'task_id' => $task->id,
+                    'type' => $index === 0 ? UserNotification::TYPE_ASSIGNED : UserNotification::TYPE_MENTIONED,
+                    'context' => $index === 0 ? null : "@{$user->username} посмотри, пожалуйста",
+                    'read_at' => $index === 2 ? now()->subHours(5) : null,
+                    'created_at' => now()->subHours(random_int(1, 48)),
+                ]);
+            }
         }
     }
 
@@ -153,6 +183,12 @@ class DatabaseSeeder extends Seeder
 
         $this->seedComments($allTasks, $members);
         $this->seedTimeLogs($allTasks, $members);
+
+        // Демо-доска с частью задач: показывает выключаемую видимость
+        $sprint = $project->boards()->create(['name' => 'Спринт 1', 'is_default' => false]);
+        $sprint->tasks()->sync(
+            $allTasks->filter(fn () => random_int(0, 9) < 6)->pluck('id')
+        );
     }
 
     private function makeTask(
@@ -214,10 +250,10 @@ class DatabaseSeeder extends Seeder
         $bodies = [
             'Посмотрел, в целом ок, но нужно уточнить требования у заказчика.',
             'Заблокировано на стороне бэкенда, жду ответа.',
-            'Готово к ревью, посмотрите пожалуйста.',
-            'Перенёс на следующую неделю по договорённости.',
+            'Готово к ревью, @anna посмотри пожалуйста.',
+            'Перенёс на следующую неделю по договорённости с @boris.',
             'Добавил обработку граничных случаев, проверьте на стейдже.',
-            'Есть вопрос по макету — обсудим на дейли.',
+            'Есть вопрос по макету — обсудим на дейли, @galina.',
         ];
 
         foreach ($allTasks->random(min(12, $allTasks->count())) as $task) {
@@ -246,6 +282,9 @@ class DatabaseSeeder extends Seeder
         $loggable = $allTasks->filter(fn (Task $t) => $t->type !== TaskType::Epic)->values();
         $monday = CarbonImmutable::now()->startOfWeek();
 
+        // Типы работ каждого проекта, чтобы не дёргать базу на каждую запись
+        $workTypesByProject = WorkType::all()->groupBy('project_id');
+
         foreach ($members as $member) {
             // Записи на текущую и предыдущую неделю
             foreach (range(-7, 6) as $dayOffset) {
@@ -254,9 +293,12 @@ class DatabaseSeeder extends Seeder
                 }
 
                 foreach (range(1, random_int(1, 3)) as $_) {
+                    $task = $loggable->random();
+
                     TimeLog::create([
-                        'task_id' => $loggable->random()->id,
+                        'task_id' => $task->id,
                         'user_id' => $member->id,
+                        'work_type_id' => $workTypesByProject[$task->project_id]->random()->id,
                         'minutes' => Arr::random([30, 45, 60, 90, 120, 180, 240, 300]),
                         'description' => Arr::random($descriptions),
                         'logged_date' => $monday->addDays($dayOffset)->toDateString(),

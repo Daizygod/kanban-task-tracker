@@ -6,6 +6,7 @@ use App\Models\Priority;
 use App\Models\Project;
 use App\Models\Status;
 use App\Models\User;
+use App\Models\WorkType;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -28,6 +29,10 @@ class ProjectSettings extends Component
     public string $newPriorityName = '';
 
     public string $newPriorityColor = '#59A869';
+
+    public string $newWorkTypeName = '';
+
+    public string $newBoardName = '';
 
     public function mount(Project $project): void
     {
@@ -298,12 +303,119 @@ class ProjectSettings extends Component
         return $this->project->priorities()->findOrFail($priorityId);
     }
 
+    // -------------------------------------------------------------- Типы работ
+
+    public function addWorkType(): void
+    {
+        $this->validate(
+            ['newWorkTypeName' => ['required', 'string', 'max:60']],
+            attributes: ['newWorkTypeName' => 'название типа'],
+        );
+
+        $name = trim($this->newWorkTypeName);
+
+        if ($this->project->workTypes()->where('name', $name)->exists()) {
+            $this->addError('newWorkTypeName', 'Такой тип работы уже есть.');
+
+            return;
+        }
+
+        $customCount = $this->project->workTypes()->where('is_standard', false)->count();
+
+        $this->project->workTypes()->create([
+            'name' => $name,
+            'color' => WorkType::CUSTOM_COLORS[$customCount % count(WorkType::CUSTOM_COLORS)],
+            'order' => ((int) $this->project->workTypes()->max('order')) + 1,
+            'is_standard' => false,
+        ]);
+
+        $this->reset('newWorkTypeName');
+    }
+
+    /** Цвет можно менять у любого типа, включая стандартные */
+    public function setWorkTypeColor(int $workTypeId, string $color): void
+    {
+        if (! preg_match('/^#[0-9a-fA-F]{6}$/', $color)) {
+            return;
+        }
+
+        $this->project->workTypes()->findOrFail($workTypeId)->update(['color' => mb_strtoupper($color)]);
+    }
+
+    public function deleteWorkType(int $workTypeId): void
+    {
+        $workType = $this->project->workTypes()->findOrFail($workTypeId);
+
+        if ($workType->is_standard) {
+            $this->dispatch('toast', message: 'Стандартные типы работ удалить нельзя.', type: 'error');
+
+            return;
+        }
+
+        if ($workType->timeLogs()->exists()) {
+            $this->dispatch('toast', message: 'На этот тип уже записано время — удалить нельзя.', type: 'error');
+
+            return;
+        }
+
+        $workType->delete();
+    }
+
+    // ------------------------------------------------------------------ Доски
+
+    public function addBoard(): void
+    {
+        $this->validate(
+            ['newBoardName' => ['required', 'string', 'max:120']],
+            attributes: ['newBoardName' => 'название доски'],
+        );
+
+        $board = $this->project->boards()->create([
+            'name' => trim($this->newBoardName),
+            'is_default' => false,
+        ]);
+
+        // Новая доска стартует со всеми задачами — лишние выключаются в задаче
+        $board->tasks()->attach($this->project->tasks()->pluck('id'));
+
+        $this->reset('newBoardName');
+        $this->dispatch('toast', message: "Доска «{$board->name}» создана.");
+    }
+
+    public function renameBoard(int $boardId, string $newName): void
+    {
+        $newName = trim($newName);
+
+        if ($newName === '') {
+            $this->dispatch('toast', message: 'Название доски не может быть пустым.', type: 'error');
+
+            return;
+        }
+
+        $this->project->boards()->findOrFail($boardId)->update(['name' => $newName]);
+    }
+
+    public function deleteBoard(int $boardId): void
+    {
+        $board = $this->project->boards()->findOrFail($boardId);
+
+        if ($board->is_default) {
+            $this->dispatch('toast', message: 'Дефолтную доску удалить нельзя.', type: 'error');
+
+            return;
+        }
+
+        $board->delete();
+    }
+
     public function render()
     {
         return view('livewire.projects.project-settings', [
             'members' => $this->project->members()->orderBy('name')->get(),
             'statuses' => $this->project->statuses()->withCount('tasks')->get(),
             'priorities' => $this->project->priorities()->withCount('tasks')->get(),
+            'workTypes' => $this->project->workTypes()->withCount('timeLogs')->get(),
+            'boards' => $this->project->boards()->withCount('tasks')->get(),
         ])->title("Настройки — {$this->project->name}");
     }
 }

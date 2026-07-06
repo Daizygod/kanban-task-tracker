@@ -25,6 +25,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'accent_color',
@@ -68,6 +69,12 @@ class User extends Authenticatable
     public function timeLogs(): HasMany
     {
         return $this->hasMany(TimeLog::class);
+    }
+
+    /** Внутренние уведомления (имя не пересекается с notifications() из Notifiable) */
+    public function userNotifications(): HasMany
+    {
+        return $this->hasMany(UserNotification::class);
     }
 
     public function accentColor(): string
