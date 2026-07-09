@@ -284,11 +284,12 @@ class TaskModal extends Component
 
     // ----------------------------------------------------------------- Render
 
-    /** Комментарии и смены статусов одной хронологической лентой */
+    /** Комментарии, смены статусов и история полей одной хронологической лентой */
     private function buildFeed(Task $task): Collection
     {
         $comments = collect();
         $logs = collect();
+        $activities = collect();
 
         if ($this->showComments) {
             $comments = $task->comments()->with('user')->get()
@@ -298,9 +299,12 @@ class TaskModal extends Component
         if ($this->showHistory) {
             $logs = $task->statusLogs()->with(['user', 'fromStatus', 'toStatus'])->get()
                 ->map(fn ($log) => ['kind' => 'status', 'at' => $log->created_at, 'item' => $log]);
+
+            $activities = $task->activities()->with('user')->get()
+                ->map(fn ($activity) => ['kind' => 'activity', 'at' => $activity->created_at, 'item' => $activity]);
         }
 
-        return $comments->concat($logs)->sortBy('at')->values();
+        return $comments->concat($logs)->concat($activities)->sortBy('at')->values();
     }
 
     public function render()

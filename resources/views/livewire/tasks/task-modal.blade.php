@@ -152,6 +152,35 @@
                                                 <div class="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-yt-text">{!! App\Support\RichText::render($entry['item']->body, $project) !!}</div>
                                             </div>
                                         </li>
+                                    @elseif ($entry['kind'] === 'activity')
+                                        <li class="flex items-center gap-2.5" wire:key="feed-a-{{ $entry['item']->id }}">
+                                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yt-panel">
+                                                @if ($entry['item']->field === 'created')
+                                                    <svg class="h-3 w-3 text-yt-muted" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                                @else
+                                                    <svg class="h-3 w-3 text-yt-muted" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z" /></svg>
+                                                @endif
+                                            </span>
+                                            <span class="min-w-0 text-[13px] text-yt-muted">
+                                                <span class="text-yt-text">{{ $entry['item']->user?->name ?? 'Система' }}</span>
+                                                <span class="mx-1 text-yt-faint">·</span>
+                                                @if ($entry['item']->field === 'created')
+                                                    создал(а) {{ match ($task->type) {
+                                                        App\Enums\TaskType::Epic => 'эпик',
+                                                        App\Enums\TaskType::Story => 'историю',
+                                                        App\Enums\TaskType::Task => 'задачу',
+                                                    } }}
+                                                @elseif ($entry['item']->field === 'description')
+                                                    изменил(а) описание
+                                                @else
+                                                    {{ $entry['item']->fieldLabel() }}:
+                                                    <span class="text-yt-faint">{{ $entry['item']->old_value ?? '—' }}</span> →
+                                                    <span class="text-yt-text">{{ $entry['item']->new_value ?? '—' }}</span>
+                                                @endif
+                                                <span class="mx-1 text-yt-faint">·</span>
+                                                {{ $entry['at']->diffForHumans() }}
+                                            </span>
+                                        </li>
                                     @else
                                         <li class="flex items-center gap-2.5" wire:key="feed-s-{{ $entry['item']->id }}">
                                             <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yt-panel">

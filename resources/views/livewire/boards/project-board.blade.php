@@ -12,38 +12,56 @@
             <h1 class="truncate text-yt-text">{{ $project->name }}</h1>
             <svg class="h-3.5 w-3.5 text-yt-muted" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
 
-            <div class="relative ml-auto">
-                <svg class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-yt-muted" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
+            <div class="ml-auto">
                 {{-- Слот шапки живёт вне DOM Livewire-компонента, поэтому глобальный dispatch --}}
-                <input type="text" x-data
-                       x-on:input.debounce.400ms="Livewire.dispatch('board-filter', { value: $event.target.value })"
-                       placeholder="Фильтр карточек на доске"
-                       class="h-8 w-[280px] rounded-lg border-yt-border bg-transparent pl-8 pr-3 text-sm text-yt-text placeholder-yt-muted focus:border-yt-accent focus:ring-1 focus:ring-yt-accent">
+                <x-filter-input event="board-filter" :meta="$filterMeta" :value="$filter" width="w-[340px]"
+                                placeholder="Фильтр: статус: работе исполнитель: я текст…" />
             </div>
         </div>
 
         {{-- Строка 2: тулбар доски --}}
-        <div class="flex h-11 items-center gap-0.5 px-4">
+        <div class="flex h-11 items-center px-4">
+            @php
+                // «?board=» внутри инлайнового @php(...) ломает компиляцию Blade,
+                // поэтому блочная форма
+                $queryString = http_build_query(array_filter([
+                    'board' => $currentBoard->is_default ? null : $currentBoard->id,
+                    'q' => $filter !== '' ? $filter : null,
+                ]));
+                $boardQuery = $queryString ? '?'.$queryString : '';
+            @endphp
+
+            {{-- Переключатель представления: канбан ↔ список --}}
+            <div class="flex items-center rounded-md bg-[rgba(81,95,104,0.25)] p-0.5">
+                <span class="rounded bg-[rgba(81,95,104,0.7)] px-3 py-0.5 text-[13px] text-yt-text">Канбан</span>
+                <a href="{{ route('projects.list', $project) }}{{ $filter !== '' ? '?q='.urlencode($filter) : '' }}" wire:navigate
+                   class="rounded px-3 py-0.5 text-[13px] text-yt-muted hover:text-yt-text">Список</a>
+            </div>
+
+            <span class="mx-3 h-5 w-px bg-yt-border-soft"></span>
+
             {{-- Выбор доски: дефолтная показывает все задачи, свои — только включённые --}}
+            <span class="mr-1.5 text-xs text-yt-faint">Доска</span>
             <select x-data x-on:change="Livewire.dispatch('board-select', { boardId: Number($event.target.value) })"
-                    class="mr-2 h-8 w-44 rounded border-yt-border bg-transparent px-2 text-sm text-yt-text focus:border-yt-accent focus:ring-1 focus:ring-yt-accent"
+                    class="h-8 w-44 rounded border-yt-border bg-transparent px-2 text-sm text-yt-text focus:border-yt-accent focus:ring-1 focus:ring-yt-accent"
                     title="Доска">
                 @foreach ($boards as $board)
                     <option value="{{ $board->id }}" @selected($board->id === $currentBoard->id)>{{ $board->name }}</option>
                 @endforeach
             </select>
 
-            @php
-                // «?board=» внутри инлайнового @php(...) ломает компиляцию Blade,
-                // поэтому блочная форма
-                $boardQuery = $currentBoard->is_default ? '' : '?board='.$currentBoard->id;
-            @endphp
-            @foreach (['epics' => 'Эпики', 'stories' => 'Истории', 'tasks' => 'Задачи'] as $tabKey => $tabLabel)
-                <a href="{{ route('projects.board', [$project, $tabKey]).$boardQuery }}" wire:navigate
-                   class="rounded px-3 py-1 text-sm {{ $tab === $tabKey ? 'bg-[rgba(81,95,104,0.5)] text-yt-text' : 'text-yt-muted hover:bg-[rgba(81,95,104,0.3)] hover:text-yt-text' }}">
-                    {{ $tabLabel }}
-                </a>
-            @endforeach
+            <span class="mx-3 h-5 w-px bg-yt-border-soft"></span>
+
+            {{-- Группировка — свойство представления, работает на любой доске --}}
+            <span class="mr-1.5 text-xs text-yt-faint">Группировка</span>
+            <div class="flex items-center rounded-md bg-[rgba(81,95,104,0.25)] p-0.5">
+                @foreach (['epics' => 'По эпикам', 'stories' => 'По историям', 'tasks' => 'Плоско'] as $tabKey => $tabLabel)
+                    <a href="{{ route('projects.board', [$project, $tabKey]).$boardQuery }}" wire:navigate
+                       class="rounded px-3 py-0.5 text-[13px] {{ $tab === $tabKey ? 'bg-[rgba(81,95,104,0.7)] text-yt-text' : 'text-yt-muted hover:text-yt-text' }}">
+                        {{ $tabLabel }}
+                    </a>
+                @endforeach
+            </div>
 
             <div class="ml-auto flex items-center gap-2">
                 <div x-data="{ open: false }" class="relative">

@@ -194,6 +194,114 @@ document.addEventListener('livewire:init', () => {
     }));
 
     // -----------------------------------------------------------------------
+    // Умный фильтр задач: автокомплит полей («статус:», «исполнитель:»…) и их
+    // значений. Значения зашиты в data-meta (справочники проекта маленькие),
+    // так что подсказки полностью клиентские — работает и в слоте шапки,
+    // где $wire недоступен. Значение поля шлётся Livewire-событием.
+    // -----------------------------------------------------------------------
+    window.Alpine.data('filterBox', () => ({
+        open: false,
+        items: [],
+        active: 0,
+        meta: {},
+        event: 'board-filter',
+        debounceTimer: null,
+
+        init() {
+            this.meta = JSON.parse(this.$el.dataset.meta || '{}');
+            this.event = this.$el.dataset.event || 'board-filter';
+        },
+
+        emit() {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = setTimeout(() => {
+                window.Livewire.dispatch(this.event, { value: this.$refs.input.value });
+            }, 400);
+        },
+
+        onInput() {
+            this.emit();
+            this.suggest();
+        },
+
+        suggest() {
+            const el = this.$refs.input;
+            const before = el.value.slice(0, el.selectionStart);
+            const fields = Object.keys(this.meta);
+
+            // Каретка внутри значения токена: «поле: недопеча…»
+            const valueMatch = before.match(
+                new RegExp(`(?:^|\\s)(${fields.join('|')})\\s*:\\s*("[^"]*|«[^»]*|[^\\s]*)$`, 'i'),
+            );
+
+            if (valueMatch) {
+                const field = valueMatch[1].toLowerCase();
+                const typed = valueMatch[2].replace(/^["«]/, '').toLowerCase();
+
+                this.items = (this.meta[field] || [])
+                    .filter((v) => v.toLowerCase().includes(typed))
+                    .slice(0, 8)
+                    .map((v) => ({
+                        // Значения с пробелами вставляются в кавычках
+                        insert: (/\s/.test(v) ? `"${v}"` : v) + ' ',
+                        label: v,
+                        hint: field,
+                        start: before.length - valueMatch[2].length,
+                    }));
+            } else {
+                // Начало слова → подсказываем сами поля
+                const wordMatch = before.match(/(?:^|\s)([а-яёa-z]*)$/i);
+                const typed = wordMatch ? wordMatch[1].toLowerCase() : null;
+
+                this.items = typed === null ? [] : fields
+                    .filter((f) => f.startsWith(typed))
+                    .map((f) => ({
+                        insert: `${f}: `,
+                        label: `${f}:`,
+                        hint: 'поле',
+                        start: before.length - typed.length,
+                    }));
+            }
+
+            this.active = 0;
+            this.open = this.items.length > 0;
+        },
+
+        pick(item) {
+            const el = this.$refs.input;
+            const tail = el.value.slice(el.selectionStart);
+
+            el.value = el.value.slice(0, item.start) + item.insert + tail;
+
+            const caret = item.start + item.insert.length;
+            el.focus();
+            el.setSelectionRange(caret, caret);
+            this.emit();
+            this.suggest();
+        },
+
+        onKeydown(event) {
+            if (!this.open) {
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                this.active = (this.active + 1) % this.items.length;
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                this.active = (this.active - 1 + this.items.length) % this.items.length;
+            } else if (event.key === 'Enter' || event.key === 'Tab') {
+                event.preventDefault();
+                this.pick(this.items[this.active]);
+            } else if (event.key === 'Escape') {
+                event.stopPropagation();
+                this.open = false;
+            }
+        },
+    }));
+
+    // -----------------------------------------------------------------------
     // Доска: live-обновления (Centrifugo) + клиентский коллапс строк/колонок
     // (без запросов на сервер, состояние переживает перезагрузку в localStorage)
     // -----------------------------------------------------------------------

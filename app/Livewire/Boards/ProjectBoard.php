@@ -8,6 +8,7 @@ use App\Models\Board;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\Centrifugo;
+use App\Support\TaskFilter;
 use Illuminate\Support\Facades\Auth;
 use InvalidArgumentException;
 use Livewire\Attributes\Layout;
@@ -23,7 +24,8 @@ class ProjectBoard extends Component
 
     public string $tab = 'epics';
 
-    /** Поиск по номеру/названию — «Фильтр карточек на доске» */
+    /** Умный фильтр карточек: «поле: значение» + свободный текст (TaskFilter) */
+    #[Url(as: 'q')]
     public string $filter = '';
 
     /** Выбранная доска; null — дефолтная («Все задачи») */
@@ -222,14 +224,7 @@ class ProjectBoard extends Component
             // Пользовательская доска показывает только включённые на ней задачи
             ->when(! $board->is_default, fn ($query) => $query
                 ->whereHas('boards', fn ($q) => $q->whereKey($board->id)))
-            ->when(trim($this->filter) !== '', function ($query) {
-                $needle = trim($this->filter);
-
-                $query->where(fn ($q) => $q
-                    ->where('title', 'ilike', "%{$needle}%")
-                    // key провалидирован как [A-Z]{3}, интерполяция безопасна
-                    ->orWhereRaw("'{$this->project->key}-' || number ilike ?", ["%{$needle}%"]));
-            })
+            ->tap(fn ($query) => TaskFilter::apply($query, $this->project, $this->filter))
             ->with(['assignee', 'status', 'priority', 'dependsOn.status'])
             ->withCount('children')
             // Порядок в ячейке ручной (drag&drop), новые карточки — в конец
@@ -297,6 +292,7 @@ class ProjectBoard extends Component
             'totalCards' => $totalCards,
             'boards' => $this->project->boards,
             'currentBoard' => $this->currentBoard(),
+            'filterMeta' => TaskFilter::meta($this->project),
             'quickCardLabel' => $this->tab === 'epics' ? 'Новая история' : 'Новая задача',
             // стартовая раскладка до инициализации Alpine (коллапс — на клиенте)
             'gridTemplate' => $statuses->map(fn () => 'minmax(245px, 1fr)')->implode(' '),

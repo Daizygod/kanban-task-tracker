@@ -11,7 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 class Task extends Model
@@ -71,7 +73,50 @@ class Task extends Model
             if ($boardIds->isNotEmpty()) {
                 $task->boards()->attach($boardIds);
             }
+
+            $task->activities()->create([
+                'user_id' => $task->created_by,
+                'field' => 'created',
+            ]);
         });
+
+        // История изменений полей (статусы логируются отдельно в moveToStatus)
+        static::updated(function (Task $task) {
+            $task->recordFieldActivities();
+        });
+    }
+
+    /** Пишет в историю изменения отслеживаемых полей текущего сохранения */
+    private function recordFieldActivities(): void
+    {
+        // Без актора (сидер, консоль) историю не засоряем
+        if (! Auth::check()) {
+            return;
+        }
+
+        $watched = [
+            'title' => fn ($value) => $value,
+            'description' => fn ($value) => null, // тексты длинные — фиксируем сам факт
+            'assignee_id' => fn ($value) => $value ? User::find($value)?->name : null,
+            'priority_id' => fn ($value) => $value ? Priority::find($value)?->name : null,
+            'due_date' => fn ($value) => $value ? \Illuminate\Support\Carbon::parse($value)->format('d.m.Y') : null,
+            'parent_id' => fn ($value) => $value ? self::find($value)?->full_number : null,
+        ];
+
+        foreach ($watched as $attribute => $resolve) {
+            if (! $this->wasChanged($attribute)) {
+                continue;
+            }
+
+            $field = str_replace(['assignee_id', 'priority_id', 'parent_id'], ['assignee', 'priority', 'parent'], $attribute);
+
+            $this->activities()->create([
+                'user_id' => Auth::id(),
+                'field' => $field,
+                'old_value' => Str::limit((string) $resolve($this->getOriginal($attribute)), 280) ?: null,
+                'new_value' => Str::limit((string) $resolve($this->{$attribute}), 280) ?: null,
+            ]);
+        }
     }
 
     protected function fullNumber(): Attribute
@@ -133,6 +178,11 @@ class Task extends Model
     public function statusLogs(): HasMany
     {
         return $this->hasMany(TaskStatusLog::class);
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(TaskActivity::class);
     }
 
     public function comments(): HasMany
